@@ -102,9 +102,9 @@
     YansWifiChannelHelper wifiChannel;
     wifiChannel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
     // TODO - add shadow propagation model
-    // wifiChannel.AddPropagationLoss ("ns3::FriisPropagationLossModel", "Frequency", DoubleValue (5e9));
+    wifiChannel.AddPropagationLoss ("ns3::FriisPropagationLossModel", "Frequency", DoubleValue (5e9));
     // wifiChannel.AddPropagationLoss ("ns3::RangePropagationLossModel");
-    wifiChannel.AddPropagationLoss ("ns3::LogDistancePropagationLossModel", "ReferenceDistance", DoubleValue (1.0), "Exponent", DoubleValue(1.6), "ReferenceLoss", DoubleValue(46.7));
+    // wifiChannel.AddPropagationLoss ("ns3::LogDistancePropagationLossModel", "ReferenceDistance", DoubleValue (1.0), "Exponent", DoubleValue(1.6), "ReferenceLoss", DoubleValue(46.7));
 
     /* Setup Physical Layer */
     YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default ();
