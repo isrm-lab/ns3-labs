@@ -41,6 +41,8 @@ std::map<std::string, int> DsssToRate = {
 
 
 uint32_t MacTxDropCount, PhyTxDropCount, PhyRxDropCount;
+uint32_t MacTx, MacRx;
+
 void MacTxDrop(Ptr<const Packet> p)
 {
   NS_LOG_INFO("Packet Drop");
@@ -59,12 +61,26 @@ void PhyRxDrop(Ptr<const Packet> p)
   PhyRxDropCount++;
 }
 
-void PrintDrop()
+void MacTxDone(Ptr<const Packet> p)
+{
+  NS_LOG_INFO("Transmitted MAC");
+  MacTx++;
+}
+
+void MacRxDone(Ptr<const Packet> p)
+{
+  NS_LOG_INFO("Received MAC");
+  MacRx++;
+}
+
+
+void PrintLMACStats()
 {
   std::cout << "After " << Simulator::Now().GetSeconds() << " sec: \t";
-  std::cout << "MacTxDropCount: " << MacTxDropCount;
-  std::cout << ", PhyTxDropCount: "<< PhyTxDropCount << ", PhyRxDropCount: " << PhyRxDropCount << "\n";
-  Simulator::Schedule(Seconds(5.0), &PrintDrop);
+  std::cout << "MacTx: " << MacTx << ", MacRx: " << MacRx;
+  std::cout << ", MacTxDropCount: " << MacTxDropCount;
+  std::cout << ", PhyTxDropCount: "<< PhyTxDropCount << ", PhyRxDropCount: " << PhyRxDropCount << std::endl;
+  Simulator::Schedule(Seconds(5.0), &PrintLMACStats);
 }
 
 void setup_flow_udp(int src, int dest, NodeContainer nodes, int packetSize, int UDPrate) 
@@ -81,7 +97,9 @@ void setup_flow_udp(int src, int dest, NodeContainer nodes, int packetSize, int 
   onOffHelper.SetAttribute ("PacketSize", UintegerValue (packetSize));
 
   std::cout << "[UDP TRAFFIC] src=" << src << " dst=" << dest << " rate=" << DataRate (UDPrate) << "\n";
-  onOffHelper.SetConstantRate (DataRate (UDPrate), packetSize);
+  onOffHelper.SetConstantRate (DataRate (UDPrate));
+  onOffHelper.SetAttribute ("PacketSize", UintegerValue (packetSize));
+
   onOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.0 + dest/10.0)));
   Address sinkLocalAddress (InetSocketAddress (Ipv4Address::GetAny (), cbrPort));
   PacketSinkHelper sinkHelper ("ns3::UdpSocketFactory", sinkLocalAddress);
@@ -94,18 +112,17 @@ int main (int argc, char *argv[])
 {
     uint32_t tries = 1;                                /* Number of tries */
     bool enableRtsCts = false;                         /* Enable RTS/CTS mechanism */
-    uint32_t payloadSize = 1472;                       /* Transport layer payload size in bytes. */
-    std::string tcpVariant = "TcpNewReno";             /* TCP variant type. */
-    std::string phyRate = "DsssRate2Mbps";             /* Physical layer bitrate. */
-    double simulationTime = 10.0;                        /* Simulation time in seconds. */
+    uint32_t payloadSize = 1460;                       /* Transport layer payload size in bytes. */
+    std::string phyRate = "ErpOfdmRate6Mbps";             /* Physical layer bitrate. */
+    double simulationTime = 25.0;                        /* Simulation time in seconds. */
     bool pcapTracing = true;                          /* PCAP Tracing is enabled or not. */
     int ns = 2, nd = 2, i, j;
-    int minCw = 7, maxCw = 1023;
+    int minCw = 15, maxCw = 1023;
 
     /* Command line argument parser setup. */
     CommandLine cmd;
-    cmd.AddValue("tries", "Number of tries", tries);
-    cmd.AddValue("enableRtsCts", "RTS/CTS enabled", enableRtsCts);
+    cmd.AddValue ("tries", "Number of tries", tries);
+    cmd.AddValue ("enableRtsCts", "RTS/CTS enabled", enableRtsCts);
     cmd.AddValue ("payloadSize", "Payload size in bytes", payloadSize);
     cmd.AddValue ("simulationTime", "Simulation time in seconds", simulationTime);
     cmd.AddValue ("pcap", "Enable/disable PCAP Tracing", pcapTracing);
@@ -116,51 +133,34 @@ int main (int argc, char *argv[])
     cmd.Parse (argc, argv);
 
     /* Enable/disable RTS/CTS */
-    UintegerValue ctsThr = (enableRtsCts ? UintegerValue (10) : UintegerValue (2200));
-    Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", ctsThr);
-
-    /* Configure TCP variant */
-    tcpVariant = std::string ("ns3::") + tcpVariant;
-    Config::SetDefault ("ns3::TcpL4Protocol::SocketType", TypeIdValue (TypeId::LookupByName (tcpVariant)));
-
-    /* Configure TCP Options */
-    Config::SetDefault ("ns3::TcpSocket::SegmentSize", UintegerValue (payloadSize));
-
-    /* Set up Legacy Channel, TwoRay Ground */
+    if (enableRtsCts)
+    {
+      Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue ("0"));
+    }
+    /* Set up Legacy Channel */
     YansWifiChannelHelper wifiChannel;
     wifiChannel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
-    //wifiChannel.AddPropagationLoss ("ns3::FriisPropagationLossModel", "Frequency", DoubleValue (2e4));
-    wifiChannel.AddPropagationLoss ("ns3::LogDistancePropagationLossModel");
+    wifiChannel.AddPropagationLoss ("ns3::FriisPropagationLossModel", "Frequency", DoubleValue (2e4));
     /* Setup Physical Layer */
     YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default ();
     wifiPhy.SetChannel (wifiChannel.Create ());
     wifiPhy.SetErrorRateModel ("ns3::YansErrorRateModel");
     WifiHelper wifiHelper;
-    wifiHelper.SetStandard (WIFI_PHY_STANDARD_80211b);
+    wifiHelper.SetStandard (WIFI_PHY_STANDARD_80211g);
     wifiHelper.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
                                        "DataMode", StringValue (phyRate),
                                        "ControlMode", StringValue ("DsssRate1Mbps"));
     NodeContainer networkNodes;
-    networkNodes.Create(ns+nd);
-    NodeContainer apNodes;
-    NodeContainer stationNodes;
-    for (i = 0; i < ns; i++) {
-        std::cout << i <<std::endl;
-        apNodes.Add(networkNodes.Get(i));
-    }
-    j = i;
-    for(i = 0; i < nd; i++,j++) {
-        std::cout << i << " ........ j=" << j<<std::endl;
-        stationNodes.Add(networkNodes.Get(j));
-    }
+    int nn = ns+nd;
+    networkNodes.Create(nn);
 
     WifiMacHelper wifiMac;
     wifiMac.SetType ("ns3::AdhocWifiMac");
     NetDeviceContainer devices = wifiHelper.Install (wifiPhy, wifiMac, networkNodes);
 
-        /* setup contention window */
-    for(i = 0; i < (ns+nd); i++) {
-        Ptr<NetDevice> dev = networkNodes.Get(0)->GetDevice(0); //not sure if getDevice of 0 or other index?!??!
+    /* setup contention window */
+    for(i = 0; i < nn; i++) {
+        Ptr<NetDevice> dev = networkNodes.Get(i)->GetDevice(0); //not sure if getDevice of 0 or other index?!??!
         Ptr<WifiNetDevice> wifi_dev = DynamicCast<WifiNetDevice>(dev);
         Ptr<WifiMac> mac = wifi_dev->GetMac();
         PointerValue ptr;
@@ -168,24 +168,25 @@ int main (int argc, char *argv[])
         Ptr<Txop> dca = ptr.Get<Txop>();
         dca->SetMinCw(minCw);
         dca->SetMaxCw(maxCw);
+        dca->SetAifsn(3); //https://mrncciew.files.wordpress.com/2014/10/cwap-contention-02.png
+        dca->SetTxopLimit(Time(0)); //Value zero corresponds to default DCF
     }
 
     /* Provide initial (X,Y, Z=0) co-ordinates for mobilenodes */
     MobilityHelper mobility;
     Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
     for (i = 0; i < ns; i++) {
-        std::cout << i <<std::endl;
+        //std::cout << i <<std::endl;
         positionAlloc->Add (Vector (i * 10.0 / ns, 0.0, 0.0));
     }
     j = i;
     for(i = 0; i < nd; i++,j++) {
-        std::cout << i << " ........ j=" << j<<std::endl;
+        //std::cout << i << " ........ j=" << j<<std::endl;
         positionAlloc->Add (Vector (i * 10.0 / nd, 10.0, 0.0));
     }
     mobility.SetPositionAllocator (positionAlloc);
     mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
-    mobility.Install (apNodes);
-    mobility.Install (stationNodes);
+    mobility.Install(networkNodes);
 
     /* Install TCP/IP stack & assign IP addresses */
     InternetStackHelper internet;
@@ -197,7 +198,7 @@ int main (int argc, char *argv[])
     Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
 
     for(i = 0; i < ns; i++) {
-        setup_flow_udp(i, ns + i % nd, networkNodes, 1460, 2000000);
+        setup_flow_udp(i, ns + i % nd, networkNodes, payloadSize, 1000000);
     }
 
     /* Enable Traces */
@@ -224,28 +225,45 @@ int main (int argc, char *argv[])
     /* PhyRxDrop: Trace source indicating a packet has been dropped by the device during reception */
     Config::ConnectWithoutContext("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxDrop", MakeCallback(&PhyTxDrop));
 
+    Config::ConnectWithoutContext("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/MacTx", MakeCallback(&MacTxDone));
+    Config::ConnectWithoutContext("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/MacRx", MakeCallback(&MacRxDone));
+
+
     /* Run simulation for requested num of seconds */
     Simulator::Stop (Seconds (simulationTime));
     Simulator::Run ();
 
-    PrintDrop();
+    //PrintDrop();
 
     monitor->CheckForLostPackets ();
     Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (flowmon.GetClassifier ());
     std::map<FlowId, FlowMonitor::FlowStats> stats = monitor->GetFlowStats ();
+    uint32_t total_rx = 0, total_tx = 0, num_flows = 0;
+    double tput = 0;
     for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = stats.begin (); i != stats.end (); ++i)
     {
         Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
         double ftime = i->second.timeLastRxPacket.GetSeconds() - i->second.timeFirstTxPacket.GetSeconds(); 
+        total_rx += i->second.rxPackets;
+        total_tx += i->second.txPackets;
+        tput += i->second.rxBytes * 8 / ftime / 1000000.0;
+        num_flows++;
+
         std::cout << "Flow " << i->first << " (" << t.sourceAddress << " -> " << t.destinationAddress << ")\n";
         std::cout << "  Tx Packets: " << i->second.txPackets << "\n";
         std::cout << "  Tx Bytes:   " << i->second.txBytes << "\n";
         std::cout << "  TxOffered:  " << i->second.txBytes * 8 / ftime / 1000000.0  << " Mbps\n";
         std::cout << "  Rx Packets: " << i->second.rxPackets << "\n";
         std::cout << "  Rx Bytes:   " << i->second.rxBytes << "\n";
-        std::cout << "  lostPackets:   " << i->second.lostPackets << "\n";
-        std::cout << "  Throughput: " << i->second.rxBytes * 8 / ftime / 1000000.0  << " Mbps\n"; // 10 secunde (stop - start)
+        std::cout << "  Throughput: " << i->second.rxBytes * 8 / ftime / 1000000.0  << " Mbps\n"; // 10 seconds (stop - start)
     }
+
+    PrintLMACStats();
+    double udpAverageThroughput = tput / num_flows;
+
+    std::cout << "sent_agt recv_agt col_cbr sent_mac recv_mac avgTput" << std::endl;
+    std::cout << total_tx << " " << total_rx << " " << (MacTxDropCount+PhyTxDropCount+PhyRxDropCount) << " ";
+    std::cout << MacTx << " " << MacRx << " " << udpAverageThroughput << std::endl;
 
     Simulator::Destroy ();
 
