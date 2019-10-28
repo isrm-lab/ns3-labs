@@ -53,11 +53,70 @@
  
  using namespace ns3;
  
+ NS_LOG_COMPONENT_DEFINE ("Lab4");
+
 
  Ptr<PacketSink> udpSink;                         /* Pointer to the packet sink application that runs over UDP */
  Ptr<PacketSink> tcpSink;                         /* Pointer to the packet sink application that runs over TCP */
  
- 
+ uint32_t MacTxCount[4], MacRxCount[4];
+
+void
+MacTx0(Ptr<const Packet> p)
+{
+    NS_LOG_INFO("MAC Tx 0");
+    MacTxCount[0]++;
+}
+
+void
+MacTx1(Ptr<const Packet> p)
+{
+    NS_LOG_INFO("MAC Tx 1");
+    MacTxCount[1]++;
+}
+
+void
+MacTx2(Ptr<const Packet> p)
+{
+  NS_LOG_INFO("MAC Tx 2");
+  MacTxCount[2]++;
+}
+
+void
+MacTx3(Ptr<const Packet> p)
+{
+  NS_LOG_INFO("MAC Tx 3");
+  MacTxCount[3]++;
+}
+
+void
+MacRx0(Ptr<const Packet> p)
+{
+  NS_LOG_INFO("MAC Rx 0");
+  MacRxCount[0]++;
+}
+
+void
+MacRx1(Ptr<const Packet> p)
+{
+  NS_LOG_INFO("MAC Rx 1");
+  MacRxCount[1]++;
+}
+
+void
+MacRx2(Ptr<const Packet> p)
+{
+  NS_LOG_INFO("MAC Rx 2");
+  MacRxCount[2]++;
+}
+
+void
+MacRx3(Ptr<const Packet> p)
+{
+  NS_LOG_INFO("MAC Rx 3");
+  MacRxCount[3]++;
+}
+
  int
  main (int argc, char *argv[])
  {
@@ -70,6 +129,7 @@
     std::string phyRate = "DsssRate2Mbps";             /* Physical layer bitrate. */
     double simulationTime = 10;                        /* Simulation time in seconds. */
     bool pcapTracing = false;                          /* PCAP Tracing is enabled or not. */
+    AsciiTraceHelper ascii;
 
     /* Command line argument parser setup. */
     CommandLine cmd;
@@ -101,9 +161,9 @@
     /* Set up Legacy Channel */
     YansWifiChannelHelper wifiChannel;
     wifiChannel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
-    // TODO - add shadow propagation model
-    wifiChannel.AddPropagationLoss ("ns3::FriisPropagationLossModel", "Frequency", DoubleValue (5e9));
-    // wifiChannel.AddPropagationLoss ("ns3::RangePropagationLossModel");
+    // TODO - add three models
+    wifiChannel.AddPropagationLoss ("ns3::FriisPropagationLossModel", "Frequency", DoubleValue (5e9)); 
+    // wifiChannel.AddPropagationLoss ("ns3::TwoRayGroundPropagationLossModel", "Frequency", DoubleValue (2.4e9), "MinDistance", DoubleValue (10.0), "HeightAboveZ", DoubleValue (0.5));
     // wifiChannel.AddPropagationLoss ("ns3::LogDistancePropagationLossModel", "ReferenceDistance", DoubleValue (1.0), "Exponent", DoubleValue(1.6), "ReferenceLoss", DoubleValue(46.7));
 
     /* Setup Physical Layer */
@@ -112,19 +172,21 @@
     wifiPhy.SetErrorRateModel ("ns3::YansErrorRateModel");
     wifiHelper.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
                                        "DataMode", StringValue (phyRate),
-                                       "ControlMode", StringValue ("DsssRate1Mbps"));
-    wifiPhy.Set ("EnergyDetectionThreshold", DoubleValue (-78.1));  // 550m
-    wifiPhy.Set ("TxGain", DoubleValue (0.281838));
-    wifiPhy.Set ("RxGain", DoubleValue (3.65262e-10));
-    
+                                       "ControlMode", StringValue ("DsssRate1Mbps"),
+                                       "MaxSsrc", UintegerValue (tries),
+                                       "MaxSlrc", UintegerValue (tries));
+    // wifiPhy.Set ("EnergyDetectionThreshold", DoubleValue (-78.1));  // 550m
+    // wifiPhy.Set ("TxGain", DoubleValue (0.281838));
+    // wifiPhy.Set ("RxGain", DoubleValue (3.65262e-10));
 
     NodeContainer networkNodes;
     networkNodes.Create(4);
     NodeContainer apNodes;
     NodeContainer stationNodes;
     for (uint32_t i = 0; i < 4; i++){
-        if (i % 2 == 0)
+        if (i % 2 == 0){
             apNodes.Add(networkNodes.Get(i));
+        }
         else
             stationNodes.Add(networkNodes.Get(i));
     }
@@ -133,7 +195,6 @@
     Ssid ssid = Ssid ("network");
     wifiMac.SetType ("ns3::ApWifiMac",
                     "Ssid", SsidValue (ssid));
-
     NetDeviceContainer apDevices;
     apDevices = wifiHelper.Install (wifiPhy, wifiMac, apNodes);
 
@@ -158,6 +219,9 @@
     mobility.Install (stationNodes);
     mobility.Install (apNodes);
 
+    wifiPhy.EnableAsciiAll (ascii.CreateFileStream ("lab4.tr"));    
+
+    Packet::EnablePrinting ();
     /* Internet stack */
     InternetStackHelper stack;
     stack.Install (networkNodes);
@@ -198,9 +262,9 @@
 
     /* Start Applications */
     udpSinkApps.Start (Seconds (0.0));
-    tcpSinkApps.Start (Seconds (0.0));
+    tcpSinkApps.Start (Seconds (0.1));
     udpServerApp.Start (Seconds (1.0));
-    tcpServerApp.Start (Seconds (1.0));
+    tcpServerApp.Start (Seconds (1.1));
 
     /* Enable Traces */
     if (pcapTracing)
@@ -213,6 +277,15 @@
     /* Install flow monitor in order to gather stats */ 
     FlowMonitorHelper flowmon;
     Ptr<FlowMonitor> monitor = flowmon.InstallAll ();
+
+    Config::ConnectWithoutContext("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Mac/MacTx", MakeCallback(&MacTx0));
+    Config::ConnectWithoutContext("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Mac/MacRx", MakeCallback(&MacRx0));
+    Config::ConnectWithoutContext("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/Mac/MacTx", MakeCallback(&MacTx1));
+    Config::ConnectWithoutContext("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/Mac/MacRx", MakeCallback(&MacRx1));
+    Config::ConnectWithoutContext("/NodeList/2/DeviceList/*/$ns3::WifiNetDevice/Mac/MacTx", MakeCallback(&MacTx2));
+    Config::ConnectWithoutContext("/NodeList/2/DeviceList/*/$ns3::WifiNetDevice/Mac/MacRx", MakeCallback(&MacRx2));
+    Config::ConnectWithoutContext("/NodeList/3/DeviceList/*/$ns3::WifiNetDevice/Mac/MacTx", MakeCallback(&MacTx3));
+    Config::ConnectWithoutContext("/NodeList/3/DeviceList/*/$ns3::WifiNetDevice/Mac/MacRx", MakeCallback(&MacRx3));
 
     /* Start Simulation */
     Simulator::Stop (Seconds (simulationTime + 1));
@@ -228,6 +301,7 @@
           Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
           double ftime = i->second.timeLastRxPacket.GetSeconds() - i->second.timeFirstTxPacket.GetSeconds(); 
           std::cout << "Flow " << i->first << " (" << t.sourceAddress << " -> " << t.destinationAddress << ")\n";
+          std::cout << "  Lost Packets: " << i->second.lostPackets << "\n";
           std::cout << "  Tx Packets: " << i->second.txPackets << "\n";
           std::cout << "  Tx Bytes:   " << i->second.txBytes << "\n";
           std::cout << "  TxOffered:  " << i->second.txBytes * 8 / ftime / 1000000.0  << " Mbps\n";
@@ -244,5 +318,10 @@
 
     std::cout << "\nUDP Average throughput: " << udpAverageThroughput << " Mbit/s" << std::endl;
     std::cout << "\nTCP Average throughput: " << tcpAverageThroughput << " Mbit/s" << std::endl;
+    std::cout << "MAC TX0=" << MacTxCount[0] << ", MAC RX0=" << MacRxCount[0] << std::endl;
+    std::cout << "MAC TX1=" << MacTxCount[1] << ", MAC RX1=" << MacRxCount[1] << std::endl;
+    std::cout << "MAC TX2=" << MacTxCount[2] << ", MAC RX2=" << MacRxCount[2] << std::endl;
+    std::cout << "MAC TX3=" << MacTxCount[3] << ", MAC RX3=" << MacRxCount[3] << std::endl;
+
     return 0;
  }
