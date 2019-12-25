@@ -109,7 +109,7 @@ int main (int argc, char **argv)
     int rate13 = 7000000;  // - 1->3; 2->4, 4->0, 0->4 flows are valid
     int rate24 = 7000000;  // - 1->3; 2->4, 4->0, 0->4 flows are valid
     int rate40 = 7000000;  // - 1->3; 2->4, 4->0, 0->4 flows are valid
-    int rate04 = 7000000;  // - 1->3; 2->4, 4->0, 0->4 flows are valid
+    int rate04 = 0;  // - 1->3; 2->4, 4->0, 0->4 flows are valid
     int simTime = 10;      // simulation time, default 10s
 
     uint8_t isTcp = 0;
@@ -187,20 +187,25 @@ int main (int argc, char **argv)
     InternetStackHelper internet;
     internet.Install (networkNodes);
     Ipv4AddressHelper ipv4;
-    ipv4.SetBase ("192.168.1.0", "255.255.255.0");
+    ipv4.SetBase ("10.1.1.0", "255.255.255.0");
     ipv4.Assign (devices);
     /* Populate routing table */
     Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
+
+    if (rate24 != 0 && rate04 != 0) {
+      std::cerr << "Cannot have two simultaneous tranmissions to a node, known limitation, TO BE FIXED" << std::endl;
+      return -EINVAL;
+    }
 
     /* Install app streams as per lab requirements */
     if (rate13 != 0)
         setup_flow_udp(1, 3, networkNodes, packetSize, rate13);
     if (rate24 != 0)
         setup_flow_udp(2, 4, networkNodes, packetSize, rate24);
-    if (rate04 != 0)
-        setup_flow_udp(0, 4, networkNodes, packetSize, rate04);
     if (rate40 != 0)
         setup_flow_udp(4, 0, networkNodes, packetSize, rate40);
+    if (rate04 != 0)
+        setup_flow_udp(0, 4, networkNodes, packetSize, rate04);
 
     /* Install FlowMonitor on all nodes */
     FlowMonitorHelper flowmon;
