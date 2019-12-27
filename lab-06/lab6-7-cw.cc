@@ -110,7 +110,6 @@ void setup_flow_udp(int src, int dest, NodeContainer nodes, int packetSize, int 
 
 int main (int argc, char *argv[])
 {
-    uint32_t tries = 1;                                /* Number of tries */
     bool enableRtsCts = false;                         /* Enable RTS/CTS mechanism */
     uint32_t payloadSize = 1460;                       /* Transport layer payload size in bytes. */
     std::string phyRate = "ErpOfdmRate6Mbps";             /* Physical layer bitrate. */
@@ -121,15 +120,14 @@ int main (int argc, char *argv[])
 
     /* Command line argument parser setup. */
     CommandLine cmd;
-    cmd.AddValue ("tries", "Number of tries", tries);
     cmd.AddValue ("enableRtsCts", "RTS/CTS enabled", enableRtsCts);
     cmd.AddValue ("payloadSize", "Payload size in bytes", payloadSize);
     cmd.AddValue ("simulationTime", "Simulation time in seconds", simulationTime);
     cmd.AddValue ("pcap", "Enable/disable PCAP Tracing", pcapTracing);
     cmd.AddValue ("ns", "number of nodes source for transmission", ns);
     cmd.AddValue ("nd", "number of nodes destination for transmission", nd);
-    cmd.AddValue ("minCw", "number of nodes source for transmission", minCw);
-    cmd.AddValue ("maxCw", "number of nodes destination for transmission", maxCw);
+    cmd.AddValue ("minCw", "minimum contention window size", minCw);
+    cmd.AddValue ("maxCw", "maximum contention window size", maxCw);
     cmd.Parse (argc, argv);
 
     /* Enable/disable RTS/CTS */

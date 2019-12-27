@@ -105,7 +105,7 @@ void setup_flow_udp(int src, int dest, NodeContainer nodes, int packetSize, int 
 int main (int argc, char **argv)
 {
     uint32_t packetSize = 1420; // bytes
-    string phyRate ("DsssRate11Mbps");
+    string phyRate ("ErpOfdmRate12Mbps");
     int rate13 = 7000000;  // - 1->3; 2->4, 4->0, 0->4 flows are valid
     int rate24 = 7000000;  // - 1->3; 2->4, 4->0, 0->4 flows are valid
     int rate40 = 7000000;  // - 1->3; 2->4, 4->0, 0->4 flows are valid
@@ -129,8 +129,6 @@ int main (int argc, char **argv)
     cmd.Parse (argc, argv);
 
     /* Setup channel in which wave propagates */
-    WifiHelper wifiHelper;
-    wifiHelper.SetStandard(WIFI_PHY_STANDARD_80211b);
     YansWifiChannelHelper wifiChannel;
     wifiChannel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
     wifiChannel.AddPropagationLoss ("ns3::FriisPropagationLossModel", "Frequency", DoubleValue (2e4));
@@ -142,9 +140,12 @@ int main (int argc, char **argv)
     wifiPhy.SetErrorRateModel ("ns3::YansErrorRateModel");
     wifiPhy.Set ("EnergyDetectionThreshold", DoubleValue (-78.1));  // 550m
     //wifiPhy.Set ("RxSensitivity", DoubleValue (-82));  // typically -82 dbm RSSI for 802.11g/n/a legacy packets
+    WifiHelper wifiHelper;
+    wifiHelper.SetStandard(WIFI_PHY_STANDARD_80211g);
     wifiHelper.SetRemoteStationManager ("ns3::ConstantRateWifiManager", 
-        "DataMode",StringValue (phyRate),
-        "ControlMode",StringValue ("DsssRate1Mbps"));
+        "ControlMode", StringValue (phyRate),
+        "DataMode",    StringValue (phyRate),
+        "NonUnicastMode", StringValue (phyRate));
 
     /* Setup nodes and install devices */
     NodeContainer networkNodes;
@@ -155,13 +156,14 @@ int main (int argc, char **argv)
     WifiMacHelper wifiMac;
     Ssid ssid = Ssid ("network");
     wifiMac.SetType ("ns3::ApWifiMac",
-                    "Ssid", SsidValue (ssid));
+                    "Ssid", SsidValue (ssid),
+                     "BeaconInterval", TimeValue (MilliSeconds (15)));
     apDevice = wifiHelper.Install (wifiPhy, wifiMac, networkNodes.Get(0));
     devices.Add(apDevice);
     /* Configure stations */
     wifiMac.SetType ("ns3::StaWifiMac",
                 "Ssid", SsidValue (ssid),
-                "ActiveProbing", BooleanValue (false));
+                "ActiveProbing", BooleanValue (true));
     for ( int i = 1; i < MAX_NUM_NODES; i++){           
         staDevice = wifiHelper.Install (wifiPhy, wifiMac, networkNodes.Get(i));
         devices.Add(staDevice);
@@ -171,10 +173,10 @@ int main (int argc, char **argv)
     MobilityHelper mobility;
     Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
     positionAlloc->Add (Vector (0.0, 0.0, 0.0));    //node 0 pos
-    positionAlloc->Add (Vector (0.0, -5.0, 0.0));   //node 1 pos
-    positionAlloc->Add (Vector (5.0, 0.0, 0.0));    //node 2 pos
-    positionAlloc->Add (Vector (0.0, 5.0, 0.0));    //node 3 pos
-    positionAlloc->Add (Vector (-5.0, 0.0, 0.0));   //node 4 pos
+    positionAlloc->Add (Vector (0.0, -20.0, 0.0));   //node 1 pos
+    positionAlloc->Add (Vector (20.0, 0.0, 0.0));    //node 2 pos
+    positionAlloc->Add (Vector (0.0, 20.0, 0.0));    //node 3 pos
+    positionAlloc->Add (Vector (-20.0, 0.0, 0.0));   //node 4 pos
 
     mobility.SetPositionAllocator (positionAlloc);
     mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
