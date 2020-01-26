@@ -99,13 +99,16 @@ Gnuplot2dDataset m_output;
 
 void CalculateThroughput (Ptr<Node> node)
 {
-  Time now = Simulator::Now ();                                         /* Return the simulator's virtual time. */
-  double cur = (sink->GetTotalRx () - lastTotalRx) * (double) 8 / 1e5;     /* Convert Application RX Packets to MBits. */
+  Time now = Simulator::Now (); /* Return the simulator's virtual time. */
+  double curBps = (sink->GetTotalRx () - lastTotalRx);
+  double curMbps = curBps * (double) 8 / 1e5;
+  /* Convert Application RX Packets to MBits. */
+
   Ptr<MobilityModel> mobility = node->GetObject<MobilityModel> ();
   Vector pos = mobility->GetPosition ();
+    std::cout << now.GetSeconds () << " " << pos.x << " " << curMbps << " " << std::endl;
   if (now.GetSeconds() > 5 && floor(now.GetSeconds()) == ceil(now.GetSeconds())) {
-    std::cout << now.GetSeconds () << " " << pos.x << " " << cur << " " << std::endl;
-    m_output.Add (pos.x, cur);
+    m_output.Add (pos.x, curBps);
   }
   lastTotalRx = sink->GetTotalRx ();
   Simulator::Schedule (MilliSeconds (100), &CalculateThroughput, node);
@@ -120,7 +123,6 @@ int main (int argc, char *argv[])
     int steps = 30;
     int stepsSize = 5;
     int stepsTime = 1;
-    simTime = steps * stepsTime;
     bool useRtsCts = false;
 
     //these two have to be in sync
@@ -147,6 +149,8 @@ int main (int argc, char *argv[])
     {
         Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue ("0"));
     }
+
+    simTime = steps * stepsTime;
 
     NetDeviceContainer devicesList, devices1;
     YansWifiPhyHelper wifiPhy;

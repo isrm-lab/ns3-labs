@@ -117,6 +117,7 @@ int main (int argc, char *argv[])
     bool pcapTracing = true;                          /* PCAP Tracing is enabled or not. */
     int ns = 2, nd = 2, i, j;
     int minCw = 15, maxCw = 1023;
+    int udpRate = 1000000;
 
     /* Command line argument parser setup. */
     CommandLine cmd;
@@ -128,6 +129,8 @@ int main (int argc, char *argv[])
     cmd.AddValue ("nd", "number of nodes destination for transmission", nd);
     cmd.AddValue ("minCw", "minimum contention window size", minCw);
     cmd.AddValue ("maxCw", "maximum contention window size", maxCw);
+    cmd.AddValue ("phyRate", "Physical layer data rate (MCS)", phyRate);
+    cmd.AddValue ("udpRate", "UDP TX desired delivered bitrate (bps)", udpRate);
     cmd.Parse (argc, argv);
 
     /* Enable/disable RTS/CTS */
@@ -196,7 +199,7 @@ int main (int argc, char *argv[])
     Ipv4GlobalRoutingHelper::PopulateRoutingTables ();
 
     for(i = 0; i < ns; i++) {
-        setup_flow_udp(i, ns + i % nd, networkNodes, payloadSize, 1000000);
+        setup_flow_udp(i, ns + i % nd, networkNodes, payloadSize, udpRate);
     }
 
     /* Enable Traces */
