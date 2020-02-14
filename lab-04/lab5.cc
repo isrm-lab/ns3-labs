@@ -15,12 +15,20 @@
 #include "ns3/flow-monitor-module.h"
 #include "ns3/gnuplot.h"
 #include <cmath>
+#include <cstdint>
 
 using namespace ns3;
 NS_LOG_COMPONENT_DEFINE ("WifiPropagationLab");
 
 Ptr<PacketSink> sink; /* Pointer to the packet sink application */
 uint64_t lastTotalRx = 0; /* The value of the last total received bytes */
+
+enum PropagationModel {
+  NAKAGAMI_3LOG = 0,    //Nakagami + 3Log Distance
+  LOG_DIST_LOSS = 1,    //LogDistancePropagationLossModel
+  THREE_LOG_DIST = 2,   //ThreeLogDistancePropagationLossModel
+  FRIIS = 3             //FriisPropagationLossModel
+};
 
 static void setup_flow_udp(int src, int dest, NodeContainer nodes, int packetSize, int UDPrate, double simTime) 
 {
@@ -114,7 +122,6 @@ void CalculateThroughput (Ptr<Node> node)
   Simulator::Schedule (MilliSeconds (100), &CalculateThroughput, node);
 }
 
-
 int main (int argc, char *argv[])
 {
     bool isTcp = false;
@@ -129,6 +136,8 @@ int main (int argc, char *argv[])
     int PacketRateSending = 54000000;
     std::string phyRate ("ErpOfdmRate54Mbps");
 
+    uint16_t propagationModel = 0;
+    PropagationModel propModel;
 
     std::string apManager("ns3::AarfWifiManager");
     //other values: "ns3::MinstrelWifiManager", ""ns3::RraaWifiManager""
@@ -142,6 +151,7 @@ int main (int argc, char *argv[])
     cmd.AddValue("stepsTime", "Time on each step", stepsTime);
     cmd.AddValue("isTcp", "If true is TCP traffic if false is UDP", isTcp);
     cmd.AddValue("useRtsCts", "toggle usage of RTS/CTS", useRtsCts);
+    cmd.AddValue("propagationModel", "Pick propagation model, refer to enum class PropagationModel for values", propagationModel);
     cmd.Parse (argc, argv);
 
     /* Enable/disable RTS/CTS */
@@ -171,19 +181,52 @@ int main (int argc, char *argv[])
     wifiPhy.Set("CcaMode1Threshold", DoubleValue(-94.0));
     wifiPhy.SetPcapDataLinkType (YansWifiPhyHelper::DLT_IEEE802_11_RADIO);
 
-    Ptr<YansWifiChannel> wifiChannel = CreateObject <YansWifiChannel> ();
-
-    Ptr<ThreeLogDistancePropagationLossModel> log3 = CreateObject<ThreeLogDistancePropagationLossModel> ();
-    Ptr<NakagamiPropagationLossModel> nak = CreateObject<NakagamiPropagationLossModel> ();
-    nak->SetAttribute("Distance1", DoubleValue (10000.0)); // Let m0 fading be for all intervals
-    nak->SetAttribute("Distance2", DoubleValue (10000.0));
-    nak->SetAttribute("m0", DoubleValue (3.0));
-    log3->SetNext (nak);
-    log3->SetAttribute ("Distance1", DoubleValue (40.0));
-    log3->SetAttribute ("Distance2", DoubleValue (100.0));
-    wifiChannel->SetPropagationLossModel (log3);
-    wifiChannel->SetPropagationDelayModel (CreateObject <ConstantSpeedPropagationDelayModel> ());
-    wifiPhy.SetChannel(wifiChannel);
+    propModel = static_cast<PropagationModel>(propagationModel);
+    switch (propModel) {
+      case PropagationModel::NAKAGAMI_3LOG:
+      {
+        Ptr<YansWifiChannel> wifiChannel = CreateObject <YansWifiChannel> ();
+        Ptr<ThreeLogDistancePropagationLossModel> log3 = CreateObject<ThreeLogDistancePropagationLossModel> ();
+        Ptr<NakagamiPropagationLossModel> nak = CreateObject<NakagamiPropagationLossModel> ();
+        nak->SetAttribute("Distance1", DoubleValue (10000.0)); // Let m0 fading be for all intervals
+        nak->SetAttribute("Distance2", DoubleValue (10000.0));
+        nak->SetAttribute("m0", DoubleValue (3.0));
+        log3->SetNext (nak);
+        log3->SetAttribute ("Distance1", DoubleValue (40.0));
+        log3->SetAttribute ("Distance2", DoubleValue (100.0));
+        wifiChannel->SetPropagationLossModel (log3);
+        wifiChannel->SetPropagationDelayModel (CreateObject <ConstantSpeedPropagationDelayModel> ());
+        wifiPhy.SetChannel(wifiChannel);
+        break;
+      }
+      case PropagationModel::LOG_DIST_LOSS:
+      {
+        YansWifiChannelHelper wifiChannel;
+        wifiChannel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
+        wifiChannel.AddPropagationLoss ("ns3::LogDistancePropagationLossModel", "Exponent", DoubleValue(2.2)); 
+        wifiPhy.SetChannel(wifiChannel.Create());
+        break;
+      }
+      case PropagationModel::THREE_LOG_DIST:
+      {
+        YansWifiChannelHelper wifiChannel;
+        wifiChannel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
+        wifiChannel.AddPropagationLoss ("ns3::ThreeLogDistancePropagationLossModel"); 
+        wifiPhy.SetChannel(wifiChannel.Create());
+        break;
+      }
+      case PropagationModel::FRIIS:
+      {
+        YansWifiChannelHelper wifiChannel;
+        wifiChannel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
+        wifiChannel.AddPropagationLoss ("ns3::FriisPropagationLossModel"); 
+        wifiPhy.SetChannel(wifiChannel.Create());
+        break;
+      }
+      default:
+        std::cerr << "Unsupported propagation model given: " << propagationModel;
+        return -EAGAIN;
+    }
 
     /* MAC LAYER setup */
     WifiMacHelper wifiMac;
@@ -200,6 +243,7 @@ int main (int argc, char *argv[])
             "DataMode",    StringValue (phyRate),
             "NonUnicastMode", StringValue (phyRate));
     } else {
+        std::cout << "Adaptive algorithm is used, phyRate, if you've entered will be ignored";
         wifi.SetRemoteStationManager(apManager);
     }
 
