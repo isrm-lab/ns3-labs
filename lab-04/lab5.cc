@@ -16,6 +16,8 @@
 #include "ns3/gnuplot.h"
 #include <cmath>
 #include <cstdint>
+#include <iostream>
+#include <iomanip>
 
 using namespace ns3;
 NS_LOG_COMPONENT_DEFINE ("WifiPropagationLab");
@@ -29,6 +31,67 @@ enum PropagationModel {
   THREE_LOG_DIST = 2,   //ThreeLogDistancePropagationLossModel
   FRIIS = 3             //FriisPropagationLossModel
 };
+
+uint32_t MacTxCount[2], MacRxCount[2];
+
+void
+MacTx0(Ptr<const Packet> p)
+{
+    NS_LOG_INFO("MAC Tx 0");
+    MacTxCount[0]++;
+}
+
+void
+MacTx1(Ptr<const Packet> p)
+{
+    NS_LOG_INFO("MAC Tx 1");
+    MacTxCount[1]++;
+}
+
+void
+MacRx0(Ptr<const Packet> p)
+{
+    NS_LOG_INFO("MAC Rx 0");
+    MacRxCount[0]++;
+}
+
+void
+MacRx1(Ptr<const Packet> p)
+{
+    NS_LOG_INFO("MAC Rx 1");
+    MacRxCount[1]++;
+}
+
+uint32_t PhyTxCount[2], PhyRxCount[2];
+
+void
+PhyTx0(Ptr<const Packet> p)
+{
+    NS_LOG_INFO("Phy Tx 0");
+    PhyTxCount[0]++;
+}
+
+void
+PhyTx1(Ptr<const Packet> p)
+{
+    NS_LOG_INFO("Phy Tx 1");
+    PhyTxCount[1]++;
+}
+
+void
+PhyRx0(Ptr<const Packet> p)
+{
+  NS_LOG_INFO("Phy Rx 0");
+  PhyRxCount[0]++;
+}
+
+void
+PhyRx1(Ptr<const Packet> p)
+{
+  NS_LOG_INFO("Phy Rx 1");
+  PhyRxCount[1]++;
+}
+
 
 static void setup_flow_udp(int src, int dest, NodeContainer nodes, int packetSize, int UDPrate, double simTime) 
 {
@@ -114,11 +177,21 @@ void CalculateThroughput (Ptr<Node> node)
 
   Ptr<MobilityModel> mobility = node->GetObject<MobilityModel> ();
   Vector pos = mobility->GetPosition ();
-    std::cout << now.GetSeconds () << " " << pos.x << " " << curMbps << " " << std::endl;
+  std::cout << std::fixed << std::setprecision(2) << now.GetSeconds ();
+  std::cout << " " << pos.x << " " << curMbps << " "; 
+  std::cout << MacTxCount[0] << " " << MacRxCount[1] << " ";
+  std::cout << PhyTxCount[0] << " " << PhyRxCount[1] << std::endl;
+
   if (now.GetSeconds() > 5 && floor(now.GetSeconds()) == ceil(now.GetSeconds())) {
-    m_output.Add (pos.x, curBps);
+      m_output.Add (pos.x, curBps);
+      memset(MacTxCount, 0, sizeof(MacTxCount));
+      memset(MacRxCount, 0, sizeof(MacRxCount));
+      memset(PhyTxCount, 0, sizeof(PhyTxCount));
+      memset(PhyRxCount, 0, sizeof(PhyRxCount));
   }
   lastTotalRx = sink->GetTotalRx ();
+
+
   Simulator::Schedule (MilliSeconds (100), &CalculateThroughput, node);
 }
 
@@ -131,6 +204,9 @@ int main (int argc, char *argv[])
     int stepsSize = 5;
     int stepsTime = 1;
     bool useRtsCts = false;
+    bool pcapTracing = false;
+    int tries = 7;
+    double defaultDistNodes = 20.0; //meters
 
     //these two have to be in sync
     int PacketRateSending = 54000000;
@@ -142,7 +218,6 @@ int main (int argc, char *argv[])
     std::string apManager("ns3::AarfWifiManager");
     //other values: "ns3::MinstrelWifiManager", ""ns3::RraaWifiManager""
 
-    //TODO: command line arguments
     CommandLine cmd;
     cmd.AddValue("phyRate", "Wifi Phy Rate (MCS) for DATA Packets in case of constant wifi", phyRate);
     cmd.AddValue("apManager", "Adaptive algorithm to be used", apManager);
@@ -152,13 +227,24 @@ int main (int argc, char *argv[])
     cmd.AddValue("isTcp", "If true is TCP traffic if false is UDP", isTcp);
     cmd.AddValue("useRtsCts", "toggle usage of RTS/CTS", useRtsCts);
     cmd.AddValue("propagationModel", "Pick propagation model, refer to enum class PropagationModel for values", propagationModel);
+    cmd.AddValue("pcap", "Enable/disable PCAP Tracing", pcapTracing);
+    cmd.AddValue("tries", "Max number of attempts to send frame (Short and Long Retry limit for station)", tries);
+
     cmd.Parse (argc, argv);
+    
+    ConfigStore config;
+    config.ConfigureDefaults ();
 
     /* Enable/disable RTS/CTS */
     if (useRtsCts)
     {
-        Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue ("0"));
+      Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue ("0"));
     }
+
+    /* STA long retry count - relevant for DATA packets - how many retransmits for DATA */
+    Config::SetDefault ("ns3::WifiRemoteStationManager::MaxSlrc", UintegerValue (tries));
+    /* STA short retry count - relevant for RTS/CTS - max number of attempts for RTS packets */
+    Config::SetDefault ("ns3::WifiRemoteStationManager::MaxSsrc", UintegerValue (tries));
 
     simTime = steps * stepsTime;
 
@@ -239,9 +325,9 @@ int main (int argc, char *argv[])
 
     if((apManager.compare("ns3::ConstantRateWifiManager")) == 0) {
         wifi.SetRemoteStationManager (apManager, 
-            "ControlMode", StringValue (phyRate),
-            "DataMode",    StringValue (phyRate),
-            "NonUnicastMode", StringValue (phyRate));
+            "ControlMode", StringValue ("ErpOfdmRate6Mbps"),    //Control packets mcs
+            "DataMode",    StringValue (phyRate),   //DATA packets mcs
+            "NonUnicastMode", StringValue (phyRate));   //RTS/CTS packets mcs
     } else {
         std::cout << "Adaptive algorithm is used, phyRate, if you've entered will be ignored";
         wifi.SetRemoteStationManager(apManager);
@@ -259,7 +345,7 @@ int main (int argc, char *argv[])
     MobilityHelper mobility;
     Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
     positionAlloc->Add (Vector (0.0, 0.0, 0.0));    //node 0 pos
-    positionAlloc->Add (Vector (0.0, -20.0, 0.0));   //node 1 pos
+    positionAlloc->Add (Vector (0.0, defaultDistNodes, 0.0));   //node 1 pos
     mobility.SetPositionAllocator (positionAlloc);
     mobility.SetMobilityModel ("ns3::ConstantPositionMobilityModel");
     mobility.Install (nodes);
@@ -278,17 +364,33 @@ int main (int argc, char *argv[])
     else
         setup_flow_udp(0, 1, nodes, 1460, PacketRateSending, simTime);
 
-    /* Do enable PCAP tracing after device install to be sure you get some PCAP */
-    wifiPhy.EnablePcapAll("lab5-propagation-adaptive");
+    std::cout << "Timestamp(seconds) Distance(m) Throughput(Mbps) MAC TX Packets MAC RX Packets PHY TX Packets PHY RX Packets" << std::endl; 
 
-    std::cout << "Timestamp(seconds) Distance(m) Throughput(Mbps)" << std::endl; 
+    /* Install flow monitor in order to gather stats */ 
+    FlowMonitorHelper flowmon;
+    Ptr<FlowMonitor> monitor = flowmon.InstallAll ();
 
-    //Move the STA by stepsSize meters every stepsTime seconds
+    /* Move the STA by stepsSize meters every stepsTime seconds */
     Simulator::Schedule (Seconds (0.5 + stepsTime), 
             &AdvancePosition, 
             nodes.Get (1), stepsSize, stepsTime);
-
     Simulator::Schedule (Seconds (1.1), &CalculateThroughput, nodes.Get (1));
+
+    if (pcapTracing)
+    {
+      /* Do enable PCAP tracing after device install to be sure you get some PCAP */
+      wifiPhy.EnablePcapAll("lab5-propagation-adaptive");
+    }
+
+    Config::ConnectWithoutContext("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Mac/MacTx", MakeCallback(&MacTx0));
+    Config::ConnectWithoutContext("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Mac/MacRx", MakeCallback(&MacRx0));
+    Config::ConnectWithoutContext("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/Mac/MacTx", MakeCallback(&MacTx1));
+    Config::ConnectWithoutContext("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/Mac/MacRx", MakeCallback(&MacRx1));
+    Config::ConnectWithoutContext("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin", MakeCallback(&PhyTx0));
+    Config::ConnectWithoutContext("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyRxEnd", MakeCallback(&PhyRx0));
+    Config::ConnectWithoutContext("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin", MakeCallback(&PhyTx1));
+    Config::ConnectWithoutContext("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyRxEnd", MakeCallback(&PhyRx1));
+    config.ConfigureAttributes ();
 
     /* Run simulation for requested num of seconds */
     Simulator::Stop (Seconds (simTime));
@@ -302,6 +404,21 @@ int main (int argc, char *argv[])
     gnuplot.SetTitle ("Throughput (AP to STA) vs time");
     gnuplot.AddDataset (m_output);
     gnuplot.GenerateOutput (outfile);
+
+    monitor->CheckForLostPackets ();
+    Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (flowmon.GetClassifier ());
+    std::map<FlowId, FlowMonitor::FlowStats> stats = monitor->GetFlowStats ();
+    for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = stats.begin (); i != stats.end (); ++i)
+    {
+      if (i->first >= 1)
+        {
+          Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
+          std::cout << "Flow " << i->first << " (" << t.sourceAddress << " -> " << t.destinationAddress << ")\n";
+          std::cout << "  Lost Packets: " << i->second.lostPackets << "\n";
+          std::cout << "  Tx Packets: " << i->second.txPackets << "\n";
+          std::cout << "  Rx Packets: " << i->second.rxPackets << "\n";
+        }
+    }
 
     Simulator::Destroy ();
 
