@@ -75,8 +75,8 @@
     /* Command line argument parser setup. */
     CommandLine cmd;
     cmd.AddValue ("numberOfNodes", "Number of nodes", numberOfNodes);
-    cmd.AddValue("runTcp", "Run either TCP or UDP", runTcp);
-    cmd.AddValue("enableRtsCts", "RTS/CTS enabled", enableRtsCts);
+    cmd.AddValue ("runTcp", "Run either TCP or UDP", runTcp);
+    cmd.AddValue ("enableRtsCts", "RTS/CTS enabled", enableRtsCts);
     cmd.AddValue ("payloadSize", "Payload size in bytes", payloadSize);
     cmd.AddValue ("dataRate", "Application data rate", dataRate);
     cmd.AddValue ("phyRate", "Physical layer bitrate", phyRate);
@@ -108,7 +108,7 @@
 
     WifiMacHelper wifiMac;
     WifiHelper wifiHelper;
-    wifiHelper.SetStandard (WIFI_PHY_STANDARD_80211b);
+    wifiHelper.SetStandard (WIFI_PHY_STANDARD_80211g);
 
     /* Set up Legacy Channel */
     YansWifiChannelHelper wifiChannel;
