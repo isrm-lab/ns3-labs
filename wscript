@@ -2,10 +2,13 @@
 
 def build(bld):
     obj = bld.create_ns3_program('lab3', ['wifi', 'applications', 'internet', 'flow-monitor'])
-    obj.source = 'lab3.cc'
+    obj.source = 'lab-03/lab3.cc'
 
     obj = bld.create_ns3_program('lab4', ['wifi', 'applications', 'internet', 'flow-monitor'])
     obj.source = 'lab4.cc'
+
+    obj = bld.create_ns3_program('lab5', ['wifi', 'applications', 'internet', 'flow-monitor'])
+    obj.source = 'lab-04/lab5.cc'
 
     obj = bld.create_ns3_program('lab6-7-cw', ['wifi', 'applications', 'internet', 'flow-monitor'])
     obj.source = 'lab-06/lab6-7-cw.cc'
