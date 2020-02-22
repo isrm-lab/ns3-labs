@@ -2,19 +2,22 @@
 
 def build(bld):
     obj = bld.create_ns3_program('lab3', ['wifi', 'applications', 'internet', 'flow-monitor'])
-    obj.source = 'lab-03/lab3.cc'
+    obj.source = 'lab-03-04-capacity/lab3.cc'
 
-    obj = bld.create_ns3_program('lab4', ['wifi', 'applications', 'internet', 'flow-monitor'])
+    obj = bld.create_ns3_program('lab3m', ['wifi', 'applications', 'internet', 'flow-monitor'])
+    obj.source = 'lab-03-04-capacity/lab3m.cc'
+
+    obj = bld.create_ns3_program('lab4-legacy', ['wifi', 'applications', 'internet', 'flow-monitor'])
     obj.source = 'lab4.cc'
 
     obj = bld.create_ns3_program('lab5', ['wifi', 'applications', 'internet', 'flow-monitor'])
-    obj.source = 'lab-04/lab5.cc'
+    obj.source = 'lab-05-06-mcs/lab5.cc'
 
     obj = bld.create_ns3_program('lab6-7-cw', ['wifi', 'applications', 'internet', 'flow-monitor'])
-    obj.source = 'lab-06/lab6-7-cw.cc'
+    obj.source = 'lab-07-08-dcf/lab6-7-cw.cc'
 
-    obj = bld.create_ns3_program('lab8', ['wifi', 'applications', 'internet', 'flow-monitor'])
-    obj.source = 'lab-08/lab8.cc'
+    obj = bld.create_ns3_program('lab9', ['wifi', 'applications', 'internet', 'flow-monitor'])
+    obj.source = 'lab-09-jain/lab9.cc'
 
     obj = bld.create_ns3_program('lab10', ['wifi', 'applications', 'internet', 'flow-monitor'])
     obj.source = 'lab10.cc'

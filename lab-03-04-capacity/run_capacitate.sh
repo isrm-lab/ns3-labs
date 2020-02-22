@@ -25,3 +25,12 @@ for mcs in "${phyRates[@]}"; do
 	done
 	echo -ne "\n"
 done
+
+for numberNodes in {2..30}; do
+	# echo $payloadSz dataset_$mcs
+	./waf --run "lab3 --simulationTime=1 --payloadSize=1460 --numberOfNodes=$numberNodes --dataRate=11Mbps --phyRate=DsssRate11Mbps" | grep Throughput | cut -d':' -f2 | awk -F' ' ' { sum += $1 } END { print sum } ' > thrPut.txt
+	thrPut=`cat thrPut.txt`
+	rm -f thrPut.txt
+	echo $numberNodes $thrPut
+	echo $numberNodes $thrPut >> dataset_numNodes.txt
+done
