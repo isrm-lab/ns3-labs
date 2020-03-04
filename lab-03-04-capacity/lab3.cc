@@ -81,7 +81,7 @@
     cmd.AddValue ("dataRate", "Application data rate", dataRate);
     cmd.AddValue ("phyRate", "Physical layer bitrate", phyRate);
     cmd.AddValue ("simulationTime", "Simulation time in seconds", simulationTime);
-    cmd.AddValue ("pcap", "Enable/disable PCAP Tracing", pcapTracing);
+    cmd.AddValue ("tracing", "Enable/disable PCAP Tracing", pcapTracing);
     cmd.Parse (argc, argv);
 
     if (numberOfNodes < 2) {
@@ -198,6 +198,8 @@
     /* Enable Traces */
     if (pcapTracing)
      {
+       AsciiTraceHelper ascii;
+       wifiPhy.EnableAsciiAll (ascii.CreateFileStream ("wifi-lab3.tr"));
        wifiPhy.SetPcapDataLinkType (WifiPhyHelper::DLT_IEEE802_11_RADIO);
        wifiPhy.EnablePcap ("AccessPoint", apDevice);
        wifiPhy.EnablePcap ("Station", staDevices);
