@@ -53,7 +53,7 @@
  
  using namespace ns3;
  
- #define RADIUS 1
+ #define RADIUS 10
  #define PI atan(1) * 4
 
  Ptr<PacketSink> sink;                         /* Pointer to the packet sink application */
@@ -66,7 +66,7 @@
     bool runTcp = false;                               /* Run TCP/UDP traffic */
     bool enableRtsCts = false;                         /* Enable RTS/CTS mechanism */
     uint32_t payloadSize = 1472;                       /* Transport layer payload size in bytes. */
-    std::string dataRate = "11Mbps";                  /* Application layer datarate. */
+    std::string offeredRate = "11Mbps";                  /* Application layer offeredRate. */
     std::string tcpVariant = "TcpNewReno";             /* TCP variant type. */
     std::string phyRate = "DsssRate11Mbps";            /* Physical layer bitrate. */
     double simulationTime = 10;                        /* Simulation time in seconds. */
@@ -78,7 +78,7 @@
     cmd.AddValue ("runTcp", "Run either TCP or UDP", runTcp);
     cmd.AddValue ("enableRtsCts", "RTS/CTS enabled", enableRtsCts);
     cmd.AddValue ("payloadSize", "Payload size in bytes", payloadSize);
-    cmd.AddValue ("dataRate", "Application data rate", dataRate);
+    cmd.AddValue ("offeredRate", "Offered TX data rate (format XMbps) for application", offeredRate);
     cmd.AddValue ("phyRate", "Physical layer bitrate", phyRate);
     cmd.AddValue ("simulationTime", "Simulation time in seconds", simulationTime);
     cmd.AddValue ("tracing", "Enable/disable PCAP Tracing", pcapTracing);
@@ -114,7 +114,6 @@
     YansWifiChannelHelper wifiChannel;
     wifiChannel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
     wifiChannel.AddPropagationLoss ("ns3::FriisPropagationLossModel", "Frequency", DoubleValue (5e9));
-
     /* Setup Physical Layer */
     YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default ();
     wifiPhy.SetChannel (wifiChannel.Create ());
@@ -188,7 +187,7 @@
     server.SetAttribute ("PacketSize", UintegerValue (payloadSize));
     server.SetAttribute ("OnTime", StringValue ("ns3::ConstantRandomVariable[Constant=1]"));
     server.SetAttribute ("OffTime", StringValue ("ns3::ConstantRandomVariable[Constant=0]"));
-    server.SetAttribute ("DataRate", DataRateValue (DataRate (dataRate)));
+    server.SetAttribute ("DataRate", DataRateValue (DataRate (offeredRate)));
     ApplicationContainer serverApp = server.Install (stationNodes);
 
     /* Start Applications */
