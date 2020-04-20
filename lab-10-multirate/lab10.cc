@@ -94,7 +94,7 @@ void setup_flow_udp(int src, int dest, NodeContainer nodes, int packetSize, int 
 
   cout << "[UDP TRAFFIC] src=" << src << " dst=" << dest << " rate=" << DataRate (UDPrate) << "\n";
   onOffHelper.SetConstantRate (DataRate (UDPrate), packetSize);
-  onOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.0 + dest/10.0)));
+  onOffHelper.SetAttribute ("StartTime", TimeValue (Seconds (1.0 + (dest)/10.0)));
   Address sinkLocalAddress (InetSocketAddress (Ipv4Address::GetAny (), cbrPort));
   PacketSinkHelper sinkHelper ("ns3::UdpSocketFactory", sinkLocalAddress);
 
@@ -104,6 +104,7 @@ void setup_flow_udp(int src, int dest, NodeContainer nodes, int packetSize, int 
 
 int main (int argc, char **argv)
 {
+
     uint32_t packetSize = 1420; // bytes
     string phyRate ("ErpOfdmRate12Mbps");
     int rate13 = 7000000;  // - 1->3; 2->4, 4->0, 0->4 flows are valid
@@ -114,6 +115,9 @@ int main (int argc, char **argv)
 
     uint8_t isTcp = 0;
     bool useRtsCts = false;
+    bool enableChannelAccessManagerLogging = false;
+    bool pcapTracing = false;                          /* PCAP Tracing is enabled or not. */
+
 
     CommandLine cmd;
 
@@ -126,8 +130,13 @@ int main (int argc, char **argv)
     cmd.AddValue ("simTime", "Simulation time ", simTime);
     cmd.AddValue ("isTcp", "If 1 is TCP traffic if 0 is UDP", isTcp);
     cmd.AddValue ("useRtsCts", "toggle usage of RTS/CTS", useRtsCts);
+    cmd.AddValue ("pcap", "Enable/disable PCAP Tracing", pcapTracing);
+    cmd.AddValue ("enableChannelAccessManagerLogging", "toggle usage of ChannelAccessManager logging", enableChannelAccessManagerLogging);
     cmd.Parse (argc, argv);
 
+    if (enableChannelAccessManagerLogging) {
+        LogComponentEnable ("ChannelAccessManager", LOG_LEVEL_ALL);
+    }
     /* Setup channel in which wave propagates */
     YansWifiChannelHelper wifiChannel;
     wifiChannel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
@@ -140,12 +149,20 @@ int main (int argc, char **argv)
     wifiPhy.SetErrorRateModel ("ns3::YansErrorRateModel");
     wifiPhy.Set ("EnergyDetectionThreshold", DoubleValue (-78.1));  // 550m
     //wifiPhy.Set ("RxSensitivity", DoubleValue (-82));  // typically -82 dbm RSSI for 802.11g/n/a legacy packets
-    WifiHelper wifiHelper;
-    wifiHelper.SetStandard(WIFI_PHY_STANDARD_80211g);
-    wifiHelper.SetRemoteStationManager ("ns3::ConstantRateWifiManager", 
-        "ControlMode", StringValue (phyRate),
+
+    WifiHelper apWifiHelper;
+    apWifiHelper.SetStandard(WIFI_PHY_STANDARD_80211g);
+    apWifiHelper.SetRemoteStationManager ("ns3::ConstantRateWifiManager", 
+        "ControlMode", StringValue ("ErpOfdmRate6Mbps"),
         "DataMode",    StringValue (phyRate),
         "NonUnicastMode", StringValue (phyRate));
+
+    WifiHelper staWifiHelper;
+    staWifiHelper.SetStandard(WIFI_PHY_STANDARD_80211g);
+    staWifiHelper.SetRemoteStationManager ("ns3::ConstantRateWifiManager", 
+        "ControlMode", StringValue ("ErpOfdmRate6Mbps"),
+        "DataMode",    StringValue ("ErpOfdmRate6Mbps"),
+        "NonUnicastMode", StringValue ("ErpOfdmRate6Mbps"));
 
     /* Setup nodes and install devices */
     NodeContainer networkNodes;
@@ -156,16 +173,18 @@ int main (int argc, char **argv)
     WifiMacHelper wifiMac;
     Ssid ssid = Ssid ("network");
     wifiMac.SetType ("ns3::ApWifiMac",
-                    "Ssid", SsidValue (ssid),
-                     "BeaconInterval", TimeValue (MilliSeconds (15)));
-    apDevice = wifiHelper.Install (wifiPhy, wifiMac, networkNodes.Get(0));
+                    "Ssid", SsidValue (ssid)
+                     // "BeaconInterval", TimeValue (MilliSeconds (15))
+                     );
+    apDevice = apWifiHelper.Install (wifiPhy, wifiMac, networkNodes.Get(0));
     devices.Add(apDevice);
     /* Configure stations */
     wifiMac.SetType ("ns3::StaWifiMac",
-                "Ssid", SsidValue (ssid),
-                "ActiveProbing", BooleanValue (true));
+                "Ssid", SsidValue (ssid)
+                // "ActiveProbing", BooleanValue (true)
+                );
     for ( int i = 1; i < MAX_NUM_NODES; i++){           
-        staDevice = wifiHelper.Install (wifiPhy, wifiMac, networkNodes.Get(i));
+        staDevice = staWifiHelper.Install (wifiPhy, wifiMac, networkNodes.Get(i));
         devices.Add(staDevice);
     }
 
@@ -183,7 +202,12 @@ int main (int argc, char **argv)
     mobility.Install (networkNodes);
 
     /* Do enable PCAP tracing after device install to be sure you get some PCAP */
-    wifiPhy.EnablePcapAll("lab10-multirate");
+    if (pcapTracing){
+        wifiPhy.EnablePcapAll("lab10-multirate");
+    }
+
+   // AsciiTraceHelper ascii;
+   // wifiPhy.EnableAsciiAll (ascii.CreateFileStream ("wifi-lab10.tr"));
 
     /* Install TCP/IP stack & assign IP addresses */
     InternetStackHelper internet;
@@ -231,7 +255,7 @@ int main (int argc, char **argv)
     Simulator::Stop (Seconds (simTime));
     Simulator::Run ();
 
-    PrintDrop();
+    // PrintDrop();
 
     monitor->CheckForLostPackets ();
     Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (flowmon.GetClassifier ());
