@@ -20,4 +20,4 @@ def build(bld):
     obj.source = 'lab-09-jain/lab9.cc'
 
     obj = bld.create_ns3_program('lab10', ['wifi', 'applications', 'internet', 'flow-monitor'])
-    obj.source = 'lab10.cc'
+    obj.source = 'lab-10-multirate/lab10.cc'
