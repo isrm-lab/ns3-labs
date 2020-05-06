@@ -23,4 +23,4 @@ def build(bld):
     obj.source = 'model-colocviu/model-colocviu.cc'
 
     obj = bld.create_ns3_program('lab10', ['wifi', 'applications', 'internet', 'flow-monitor'])
-    obj.source = 'lab10.cc'
+    obj.source = 'lab-10-multirate/lab10.cc'
