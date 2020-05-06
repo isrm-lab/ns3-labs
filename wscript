@@ -19,5 +19,8 @@ def build(bld):
     obj = bld.create_ns3_program('lab9', ['wifi', 'applications', 'internet', 'flow-monitor'])
     obj.source = 'lab-09-jain/lab9.cc'
 
+    obj = bld.create_ns3_program('model-colocviu', ['wifi', 'applications', 'internet', 'flow-monitor'])
+    obj.source = 'model-colocviu/model-colocviu.cc'
+
     obj = bld.create_ns3_program('lab10', ['wifi', 'applications', 'internet', 'flow-monitor'])
     obj.source = 'lab10.cc'
