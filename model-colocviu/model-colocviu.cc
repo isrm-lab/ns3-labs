@@ -66,10 +66,10 @@
     bool runTcp = false;                               /* Run TCP/UDP traffic */
     bool enableRtsCts = false;                         /* Enable RTS/CTS mechanism */
     uint32_t payloadSize = 1460;                       /* Transport layer payload size in bytes. */
-    std::string offeredRate = "11Mbps";                  /* Application layer offeredRate. */
+    std::string offeredRate = "12Mbps";                  /* Application layer offeredRate. */
     std::string tcpVariant = "TcpNewReno";             /* TCP variant type. */
-    std::string phyRate = "DsssRate11Mbps";            /* Physical layer bitrate. */
-    double simulationTime = 10;                        /* Simulation time in seconds. */
+    std::string phyRate = "ErpOfdmRate12Mbps";            /* Physical layer bitrate. */
+    double simulationTime = 20;                        /* Simulation time in seconds. */
     bool pcapTracing = false;                          /* PCAP Tracing is enabled or not. */
 
     /* Command line argument parser setup. */
@@ -108,19 +108,19 @@
 
     WifiMacHelper wifiMac;
     WifiHelper wifiHelper;
-    wifiHelper.SetStandard (WIFI_PHY_STANDARD_80211b);
+    wifiHelper.SetStandard (WIFI_PHY_STANDARD_80211g);
 
     /* Set up Legacy Channel */
     YansWifiChannelHelper wifiChannel;
     wifiChannel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
-    wifiChannel.AddPropagationLoss ("ns3::FriisPropagationLossModel", "Frequency", DoubleValue (5e9));
+    wifiChannel.AddPropagationLoss ("ns3::FriisPropagationLossModel", "Frequency", DoubleValue (2e4));
     /* Setup Physical Layer */
     YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default ();
     wifiPhy.SetChannel (wifiChannel.Create ());
     wifiPhy.SetErrorRateModel ("ns3::YansErrorRateModel");
     wifiHelper.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
                                        "DataMode", StringValue (phyRate),
-                                       "ControlMode", StringValue ("DsssRate1Mbps"));
+                                       "ControlMode", StringValue ("ErpOfdmRate6Mbps"));
     NodeContainer networkNodes;
     networkNodes.Create (numberOfNodes);
     NodeContainer stationNodes;
@@ -206,8 +206,9 @@
     /* Start Applications */
     sinkApp.Start (Seconds (0.0));
     for (std::vector<ApplicationContainer>::iterator it = serverApps.begin(); it != serverApps.end(); ++it){
-      it->Start (Seconds (1.0 + 0.05 * (it - serverApps.begin())));
+      it->Start (Seconds (0.5 + 0.05 * (it - serverApps.begin())));
     }
+
 
     /* Enable Traces */
     if (pcapTracing)
@@ -260,9 +261,9 @@
 
           std::cout << "  Tx Packets: " << i->second.txPackets << "\n";
           std::cout << "  Tx Bytes:   " << i->second.txBytes << "\n";
-          std::cout << "  TxOffered:  " << i->second.txBytes * 8 / ftime / 1000000.0  << " Mbps\n";
           std::cout << "  Rx Packets: " << i->second.rxPackets << "\n";
           std::cout << "  Rx Bytes:   " << i->second.rxBytes << "\n";
+          std::cout << "  Lost packets:   " << i->second.lostPackets << "\n";
         }
     }
 
