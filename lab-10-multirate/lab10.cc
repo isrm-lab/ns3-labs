@@ -50,21 +50,19 @@ NS_LOG_COMPONENT_DEFINE ("Lab10-Multirate");
 
 uint32_t MacTxDropCount, PhyTxDropCount, PhyRxDropCount;
 
-void
-MacTxDrop(Ptr<const Packet> p)
+void MacTxDrop(std::string context, Ptr<const Packet> p)
 {
   NS_LOG_INFO("Packet Drop");
   MacTxDropCount++;
 }
 
-void
-PhyTxDrop(Ptr<const Packet> p)
+void PhyTxDrop(std::string context, Ptr<const Packet> p)
 {
-  NS_LOG_INFO("Packet Drop");
+  NS_LOG_INFO("PHY Packet Drop");
   PhyTxDropCount++;
 }
-void
-PhyRxDrop(Ptr<const Packet> p)
+
+void PhyRxDrop(std::string context, Ptr<const Packet> p, WifiPhyRxfailureReason reason)
 {
   NS_LOG_INFO("Packet Drop");
   PhyRxDropCount++;
@@ -147,18 +145,18 @@ int main (int argc, char **argv)
     wifiPhy.SetChannel (wifiChannel.Create ());
     wifiPhy.SetPcapDataLinkType (YansWifiPhyHelper::DLT_IEEE802_11_RADIO);
     wifiPhy.SetErrorRateModel ("ns3::YansErrorRateModel");
-    wifiPhy.Set ("EnergyDetectionThreshold", DoubleValue (-78.1));  // 550m
+    //wifiPhy.Set ("EnergyDetectionThreshold", DoubleValue (-78.1));  // 550m
     //wifiPhy.Set ("RxSensitivity", DoubleValue (-82));  // typically -82 dbm RSSI for 802.11g/n/a legacy packets
 
     WifiHelper apWifiHelper;
-    apWifiHelper.SetStandard(WIFI_PHY_STANDARD_80211g);
+    apWifiHelper.SetStandard(WIFI_STANDARD_80211g);
     apWifiHelper.SetRemoteStationManager ("ns3::ConstantRateWifiManager", 
         "ControlMode", StringValue ("ErpOfdmRate6Mbps"),
         "DataMode",    StringValue (phyRate),
         "NonUnicastMode", StringValue (phyRate));
 
     WifiHelper staWifiHelper;
-    staWifiHelper.SetStandard(WIFI_PHY_STANDARD_80211g);
+    staWifiHelper.SetStandard(WIFI_STANDARD_80211g);
     staWifiHelper.SetRemoteStationManager ("ns3::ConstantRateWifiManager", 
         "ControlMode", StringValue ("ErpOfdmRate6Mbps"),
         "DataMode",    StringValue ("ErpOfdmRate6Mbps"),
@@ -245,11 +243,11 @@ int main (int argc, char **argv)
 
     /* Install Trace for Collisions */
     /* MacTxDrop: A packet has been dropped in the MAC layer before transmission. */
-    Config::ConnectWithoutContext("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/MacTxDrop", MakeCallback(&MacTxDrop));
+    Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/MacTxDrop", MakeCallback(&MacTxDrop));
     /* PhyTxDrop: Trace source indicating a packet has been dropped by the device during transmission */
-    Config::ConnectWithoutContext("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyRxDrop", MakeCallback(&PhyRxDrop));
+    Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyRxDrop", MakeCallback(&PhyRxDrop));
     /* PhyRxDrop: Trace source indicating a packet has been dropped by the device during reception */
-    Config::ConnectWithoutContext("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxDrop", MakeCallback(&PhyTxDrop));
+    Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxDrop", MakeCallback(&PhyTxDrop));
 
     /* Run simulation for requested num of seconds */
     Simulator::Stop (Seconds (simTime));

@@ -73,7 +73,7 @@ int main (int argc, char *argv[])
     wifiPhy.SetChannel (wifiChannel.Create ());
     wifiPhy.SetErrorRateModel ("ns3::YansErrorRateModel");
     WifiHelper wifiHelper;
-    wifiHelper.SetStandard (WIFI_PHY_STANDARD_80211g);
+    wifiHelper.SetStandard (WIFI_STANDARD_80211g);
     wifiHelper.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
                                        "DataMode", StringValue (phyRate),
                                        "ControlMode", StringValue ("DsssRate1Mbps"));

@@ -35,61 +35,66 @@ enum PropagationModel {
 uint32_t MacTxCount[2], MacRxCount[2];
 
 void
-MacTx0(Ptr<const Packet> p)
+MacTx0(Ptr<CounterCalculator<uint32_t> > datac, std::string path, Ptr<const Packet> packet)
 {
     NS_LOG_INFO("MAC Tx 0");
     MacTxCount[0]++;
+    datac->Update ();
 }
 
 void
-MacTx1(Ptr<const Packet> p)
+MacTx1(Ptr<CounterCalculator<uint32_t> > datac, std::string path, Ptr<const Packet> packet)
 {
     NS_LOG_INFO("MAC Tx 1");
     MacTxCount[1]++;
 }
 
 void
-MacRx0(Ptr<const Packet> p)
+MacRx0(Ptr<CounterCalculator<uint32_t> > datac, std::string path, Ptr<const Packet> packet)
 {
     NS_LOG_INFO("MAC Rx 0");
     MacRxCount[0]++;
+    datac->Update ();
 }
 
 void
-MacRx1(Ptr<const Packet> p)
+MacRx1(Ptr<CounterCalculator<uint32_t> > datac, std::string path, Ptr<const Packet> packet)
 {
     NS_LOG_INFO("MAC Rx 1");
     MacRxCount[1]++;
+    datac->Update ();
 }
 
 uint32_t PhyTxCount[2], PhyRxCount[2];
 
 void
-PhyTx0(Ptr<const Packet> p)
+PhyTx0(std::string path, Ptr<const Packet> packet, double powerW)
 {
+    (void)powerW;
     NS_LOG_INFO("Phy Tx 0");
     PhyTxCount[0]++;
 }
 
 void
-PhyTx1(Ptr<const Packet> p)
+PhyTx1(std::string path, Ptr<const Packet> packet, double powerW)
 {
     NS_LOG_INFO("Phy Tx 1");
     PhyTxCount[1]++;
+    (void)powerW;
 }
 
 void
-PhyRx0(Ptr<const Packet> p)
+PhyRx0(std::string path, Ptr<const Packet> packet)
 {
-  NS_LOG_INFO("Phy Rx 0");
-  PhyRxCount[0]++;
+    NS_LOG_INFO("Phy Rx 0");
+    PhyRxCount[0]++;
 }
 
 void
-PhyRx1(Ptr<const Packet> p)
+PhyRx1(std::string path, Ptr<const Packet> packet)
 {
-  NS_LOG_INFO("Phy Rx 1");
-  PhyRxCount[1]++;
+    NS_LOG_INFO("Phy Rx 1");
+    PhyRxCount[1]++;
 }
 
 
@@ -263,8 +268,8 @@ int main (int argc, char *argv[])
     wifiPhy = YansWifiPhyHelper::Default ();
     wifiPhy.Set("TxPowerEnd", DoubleValue(10.0)); 
     wifiPhy.Set("TxPowerStart", DoubleValue(10.0));
-    wifiPhy.Set("EnergyDetectionThreshold", DoubleValue(-94.0));
-    wifiPhy.Set("CcaMode1Threshold", DoubleValue(-94.0));
+    // wifiPhy.Set("EnergyDetectionThreshold", DoubleValue(-94.0));
+    // wifiPhy.Set("CcaMode1Threshold", DoubleValue(-94.0));
     wifiPhy.SetPcapDataLinkType (YansWifiPhyHelper::DLT_IEEE802_11_RADIO);
 
     propModel = static_cast<PropagationModel>(propagationModel);
@@ -317,11 +322,11 @@ int main (int argc, char *argv[])
     /* MAC LAYER setup */
     WifiMacHelper wifiMac;
     WifiHelper wifi;
-    wifi.SetStandard(WIFI_PHY_STANDARD_80211g);
+    wifi.SetStandard(WIFI_STANDARD_80211g);
     Ssid ssid = Ssid ("network");
     wifiMac.SetType ("ns3::ApWifiMac",
                     "Ssid", SsidValue (ssid),
-                    "BeaconInterval", TimeValue (MilliSeconds (100)));
+                    "BeaconInterval", TimeValue (MilliSeconds (1024)));
 
     if((apManager.compare("ns3::ConstantRateWifiManager")) == 0) {
         wifi.SetRemoteStationManager (apManager, 
@@ -382,14 +387,31 @@ int main (int argc, char *argv[])
       wifiPhy.EnablePcapAll("lab5-propagation-adaptive");
     }
 
-    Config::ConnectWithoutContext("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Mac/MacTx", MakeCallback(&MacTx0));
-    Config::ConnectWithoutContext("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Mac/MacRx", MakeCallback(&MacRx0));
-    Config::ConnectWithoutContext("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/Mac/MacTx", MakeCallback(&MacTx1));
-    Config::ConnectWithoutContext("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/Mac/MacRx", MakeCallback(&MacRx1));
-    Config::ConnectWithoutContext("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin", MakeCallback(&PhyTx0));
-    Config::ConnectWithoutContext("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyRxEnd", MakeCallback(&PhyRx0));
-    Config::ConnectWithoutContext("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin", MakeCallback(&PhyTx1));
-    Config::ConnectWithoutContext("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyRxEnd", MakeCallback(&PhyRx1));
+    Ptr<CounterCalculator<uint32_t> > totalTx = CreateObject<CounterCalculator<uint32_t> >();
+    Ptr<CounterCalculator<uint32_t> > totalRx = CreateObject<CounterCalculator<uint32_t> >();
+
+////////////////////////////////////////////////////////////////////////////////////////
+    totalTx->SetKey ("wifi-tx-frames");
+    totalTx->SetContext ("node[0]");
+    Config::Connect("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Mac/MacTx", MakeBoundCallback(&MacTx0, totalTx));
+
+    totalRx->SetKey ("wifi-rx-frames");
+    totalRx->SetContext ("node[0]");
+    Config::Connect("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Mac/MacRx", MakeBoundCallback(&MacRx0, totalRx));
+////////////////////////////////////////////////////////////////////////////////////////
+    totalTx->SetKey ("wifi-tx-frames");
+    totalTx->SetContext ("node[1]");
+    Config::Connect("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/Mac/MacTx", MakeBoundCallback(&MacTx1, totalTx));
+
+    totalRx->SetKey ("wifi-rx-frames");
+    totalRx->SetContext ("node[1]");
+    Config::Connect("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/Mac/MacRx", MakeBoundCallback(&MacRx1, totalRx));
+////////////////////////////////////////////////////////////////////////////////////////
+    Config::Connect("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin", MakeCallback(&PhyTx0));
+    Config::Connect("/NodeList/0/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyRxEnd", MakeCallback(&PhyRx0));
+    Config::Connect("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxBegin", MakeCallback(&PhyTx1));
+    Config::Connect("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyRxEnd", MakeCallback(&PhyRx1));
+
     config.ConfigureAttributes ();
 
     /* Run simulation for requested num of seconds */

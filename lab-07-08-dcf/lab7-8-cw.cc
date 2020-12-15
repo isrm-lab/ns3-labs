@@ -43,34 +43,36 @@ std::map<std::string, int> DsssToRate = {
 uint32_t MacTxDropCount, PhyTxDropCount, PhyRxDropCount;
 uint32_t MacTx, MacRx;
 
-void MacTxDrop(Ptr<const Packet> p)
+void MacTxDrop(std::string context, Ptr<const Packet> p)
 {
   NS_LOG_INFO("Packet Drop");
   MacTxDropCount++;
 }
 
-void PhyTxDrop(Ptr<const Packet> p)
+void PhyTxDrop(std::string context, Ptr<const Packet> p)
 {
-  NS_LOG_INFO("Packet Drop");
+  NS_LOG_INFO("PHY Packet Drop");
   PhyTxDropCount++;
 }
 
-void PhyRxDrop(Ptr<const Packet> p)
+void PhyRxDrop(std::string context, Ptr<const Packet> p, WifiPhyRxfailureReason reason)
 {
   NS_LOG_INFO("Packet Drop");
   PhyRxDropCount++;
 }
 
-void MacTxDone(Ptr<const Packet> p)
+void MacTxDone(Ptr<CounterCalculator<uint32_t> > datac, std::string path, Ptr<const Packet> packet)
 {
   NS_LOG_INFO("Transmitted MAC");
   MacTx++;
+  datac->Update ();
 }
 
-void MacRxDone(Ptr<const Packet> p)
+void MacRxDone(Ptr<CounterCalculator<uint32_t> > datac, std::string path, Ptr<const Packet> packet)
 {
   NS_LOG_INFO("Received MAC");
   MacRx++;
+  datac->Update ();
 }
 
 
@@ -147,7 +149,7 @@ int main (int argc, char *argv[])
     wifiPhy.SetChannel (wifiChannel.Create ());
     wifiPhy.SetErrorRateModel ("ns3::YansErrorRateModel");
     WifiHelper wifiHelper;
-    wifiHelper.SetStandard (WIFI_PHY_STANDARD_80211g);
+    wifiHelper.SetStandard (WIFI_STANDARD_80211g);
     wifiHelper.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
                                        "DataMode", StringValue (phyRate),
                                        "ControlMode", StringValue ("DsssRate1Mbps"));
@@ -220,21 +222,27 @@ int main (int argc, char *argv[])
 
     /* Install Trace for Collisions */
     /* MacTxDrop: A packet has been dropped in the MAC layer before transmission. */
-    Config::ConnectWithoutContext("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/MacTxDrop", MakeCallback(&MacTxDrop));
+    Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/MacTxDrop", MakeCallback(&MacTxDrop));
     /* PhyTxDrop: Trace source indicating a packet has been dropped by the device during transmission */
-    Config::ConnectWithoutContext("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyRxDrop", MakeCallback(&PhyRxDrop));
+    Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyRxDrop", MakeCallback(&PhyRxDrop));
     /* PhyRxDrop: Trace source indicating a packet has been dropped by the device during reception */
-    Config::ConnectWithoutContext("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxDrop", MakeCallback(&PhyTxDrop));
+    Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxDrop", MakeCallback(&PhyTxDrop));
 
-    Config::ConnectWithoutContext("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/MacTx", MakeCallback(&MacTxDone));
-    Config::ConnectWithoutContext("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/MacRx", MakeCallback(&MacRxDone));
+    Ptr<CounterCalculator<uint32_t> > totalTx = CreateObject<CounterCalculator<uint32_t> >();
+    Ptr<CounterCalculator<uint32_t> > totalRx = CreateObject<CounterCalculator<uint32_t> >();
+    totalTx->SetKey ("wifi-tx-frames");
+    totalTx->SetContext ("node[0]");
+    totalRx->SetKey ("wifi-rx-frames");
+    totalRx->SetContext ("node[0]");
 
+    Config::Connect("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/Mac/MacTx", MakeBoundCallback(&MacTxDone, totalTx));
+    Config::Connect("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/Mac/MacRx", MakeBoundCallback(&MacRxDone, totalRx));
 
     /* Run simulation for requested num of seconds */
     Simulator::Stop (Seconds (simulationTime));
     Simulator::Run ();
 
-    //PrintDrop();
+    PrintLMACStats();
 
     monitor->CheckForLostPackets ();
     Ptr<Ipv4FlowClassifier> classifier = DynamicCast<Ipv4FlowClassifier> (flowmon.GetClassifier ());

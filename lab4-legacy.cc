@@ -156,7 +156,7 @@ MacRx3(Ptr<const Packet> p)
 
     WifiMacHelper wifiMac;
     WifiHelper wifiHelper;
-    wifiHelper.SetStandard (WIFI_PHY_STANDARD_80211b);
+    wifiHelper.SetStandard (WIFI_STANDARD_80211b);
 
     /* Set up Legacy Channel */
     YansWifiChannelHelper wifiChannel;

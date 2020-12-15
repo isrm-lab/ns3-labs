@@ -136,7 +136,7 @@ int main (int argc, char *argv[])
 
   WifiHelper wifi;
   WifiMacHelper mac;
-  wifi.SetStandard (WIFI_PHY_STANDARD_80211g);
+  wifi.SetStandard (WIFI_STANDARD_80211g);
   wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager",
                                 "DataMode", StringValue ("ErpOfdmRate12Mbps"),
                                 "ControlMode", StringValue ("DsssRate1Mbps"));
