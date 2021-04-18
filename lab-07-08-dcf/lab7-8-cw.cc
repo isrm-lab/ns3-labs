@@ -235,8 +235,8 @@ int main (int argc, char *argv[])
     totalRx->SetKey ("wifi-rx-frames");
     totalRx->SetContext ("node[0]");
 
-    Config::Connect("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/Mac/MacTx", MakeBoundCallback(&MacTxDone, totalTx));
-    Config::Connect("/NodeList/1/DeviceList/*/$ns3::WifiNetDevice/Mac/MacRx", MakeBoundCallback(&MacRxDone, totalRx));
+    Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/MacTx", MakeBoundCallback(&MacTxDone, totalTx));
+    Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/MacRx", MakeBoundCallback(&MacRxDone, totalRx));
 
     /* Run simulation for requested num of seconds */
     Simulator::Stop (Seconds (simulationTime));
