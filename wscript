@@ -29,3 +29,7 @@ def build(bld):
 
     obj = bld.create_ns3_program('lab4-legacy', ['wifi', 'applications', 'internet', 'flow-monitor'])
     obj.source = 'lab4-legacy.cc'
+
+    obj = bld.create_ns3_program('lab9-wifi-spatial-reuse', ['wifi', 'applications', 'internet', 'flow-monitor'])
+    obj.source = 'lab9-wifi-spatial-reuse.cc'
+

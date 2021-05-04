@@ -74,9 +74,26 @@ void SocketRx (std::string context, Ptr<const Packet> p, const Address &addr) {
   bytesReceived[nodeId] += p->GetSize ();
 }
 
+uint32_t MacTxDropCount, PhyTxDropCount, PhyRxDropCount;
+
+void MacTxDrop(std::string context, Ptr<const Packet> p)
+{
+  MacTxDropCount++;
+}
+
+void PhyTxDrop(std::string context, Ptr<const Packet> p)
+{
+  PhyTxDropCount++;
+}
+
+void PhyRxDrop(std::string context, Ptr<const Packet> p, WifiPhyRxfailureReason reason)
+{
+  PhyRxDropCount++;
+}
+
 int main (int argc, char *argv[])
 {
-  double duration = 10.0; // seconds
+  double duration = 5.0; // seconds
   double d1 = 30.0; // meters
   double d2 = 30.0; // meters
   double x = 10000.0; // meters
@@ -116,6 +133,8 @@ int main (int argc, char *argv[])
     Config::SetDefault ("ns3::WifiRemoteStationManager::RtsCtsThreshold", StringValue ("0"));
   }
 
+  std::cout << "Using distance AP1 -> AP2: " << x << " meters" << std::endl;
+
   NodeContainer wifiStaNodes;
   wifiStaNodes.Create (2);
   NodeContainer wifiApNodes;
@@ -123,7 +142,9 @@ int main (int argc, char *argv[])
 
   SpectrumWifiPhyHelper spectrumPhy = SpectrumWifiPhyHelper::Default ();
   Ptr<MultiModelSpectrumChannel> spectrumChannel = CreateObject<MultiModelSpectrumChannel> ();
-  Ptr<FriisPropagationLossModel> lossModel = CreateObject<FriisPropagationLossModel> ();
+  Ptr<LogDistancePropagationLossModel> lossModel = CreateObject<LogDistancePropagationLossModel> ();
+  lossModel->SetPathLossExponent(2.6);
+  lossModel->SetReference(10, 69.8735);
   spectrumChannel->AddPropagationLossModel (lossModel);
   Ptr<ConstantSpeedPropagationDelayModel> delayModel = CreateObject<ConstantSpeedPropagationDelayModel> ();
   spectrumChannel->SetPropagationDelayModel (delayModel);
@@ -238,14 +259,25 @@ int main (int argc, char *argv[])
 
   Config::Connect ("/NodeList/*/ApplicationList/*/$ns3::PacketSocketServer/Rx", MakeCallback (&SocketRx));
 
+    /* MacTxDrop: A packet has been dropped in the MAC layer before transmission. */
+    Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Mac/MacTxDrop", MakeCallback(&MacTxDrop));
+    /* PhyTxDrop: Trace source indicating a packet has been dropped by the device during transmission */
+    Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyRxDrop", MakeCallback(&PhyRxDrop));
+    /* PhyRxDrop: Trace source indicating a packet has been dropped by the device during reception */
+    Config::Connect("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/PhyTxDrop", MakeCallback(&PhyTxDrop));
+
   Simulator::Stop (Seconds (duration));
   Simulator::Run ();
   Simulator::Destroy ();
 
   for (uint32_t i = 0; i < 2; i++) {
     double throughput = static_cast<double> (bytesReceived[2 + i]) * 8 / 1000 / 1000 / duration;
-    std::cout << "Throughput for BSS " << i + 1 << ": " << throughput << " Mbit/s" << std::endl;
+    std::cout << "Throughput_BSS" << i + 1 << ": " << throughput << " Mbit/s" << std::endl;
   }
+
+  std::cout << "MacTxDropCount: " << MacTxDropCount << std::endl;
+  std::cout << "PhyTxDropCount: " << PhyTxDropCount << std::endl; 
+  std::cout << "PhyRxDropCount: " << PhyRxDropCount << std::endl;
 
   return 0;
 }
