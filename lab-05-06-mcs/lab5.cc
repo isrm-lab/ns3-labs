@@ -265,7 +265,7 @@ int main (int argc, char *argv[])
                                                 );
 
     /* PHY LAYER setup */
-    wifiPhy = YansWifiPhyHelper::Default ();
+    wifiPhy.SetErrorRateModel ("ns3::NistErrorRateModel");
     wifiPhy.Set("TxPowerEnd", DoubleValue(10.0)); 
     wifiPhy.Set("TxPowerStart", DoubleValue(10.0));
     // wifiPhy.Set("EnergyDetectionThreshold", DoubleValue(-94.0));

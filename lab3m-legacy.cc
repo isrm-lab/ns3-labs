@@ -148,7 +148,8 @@ void experiment (bool enableCtsRts, uint32_t packetSize,
   wifi.SetRemoteStationManager ("ns3::ConstantRateWifiManager", 
                                 "DataMode",StringValue (phyMode), 
                                 "ControlMode",StringValue ("DsssRate1Mbps"));
-  YansWifiPhyHelper wifiPhy =  YansWifiPhyHelper::Default ();
+  YansWifiPhyHelper wifiPhy;
+  wifiPhy.SetErrorRateModel ("ns3::NistErrorRateModel");
   wifiPhy.SetChannel (wifiChannel);
   wifiPhy.SetPcapDataLinkType (YansWifiPhyHelper::DLT_IEEE802_11_RADIO);  
   WifiMacHelper wifiMac; // = WifiMacHelper::Default ();

@@ -167,7 +167,8 @@ MacRx3(Ptr<const Packet> p)
     // wifiChannel.AddPropagationLoss ("ns3::LogDistancePropagationLossModel", "ReferenceDistance", DoubleValue (1.0), "Exponent", DoubleValue(1.6), "ReferenceLoss", DoubleValue(46.7));
 
     /* Setup Physical Layer */
-    YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default ();
+    YansWifiPhyHelper wifiPhy;
+    wifiPhy.SetErrorRateModel ("ns3::NistErrorRateModel");
     wifiPhy.SetChannel (wifiChannel.Create ());
     wifiPhy.SetErrorRateModel ("ns3::YansErrorRateModel");
     wifiHelper.SetRemoteStationManager ("ns3::ConstantRateWifiManager",

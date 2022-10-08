@@ -141,7 +141,8 @@ int main (int argc, char **argv)
     wifiChannel.AddPropagationLoss ("ns3::FriisPropagationLossModel", "Frequency", DoubleValue (2e4));
 
     /* Setup Physical Layer */
-    YansWifiPhyHelper wifiPhy = YansWifiPhyHelper::Default ();
+    YansWifiPhyHelper wifiPhy;
+    wifiPhy.SetErrorRateModel ("ns3::NistErrorRateModel");
     wifiPhy.SetChannel (wifiChannel.Create ());
     wifiPhy.SetPcapDataLinkType (YansWifiPhyHelper::DLT_IEEE802_11_RADIO);
     wifiPhy.SetErrorRateModel ("ns3::YansErrorRateModel");
