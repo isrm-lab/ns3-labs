@@ -191,6 +191,8 @@ int main (int argc, char *argv[])
     std::map<FlowId, FlowMonitor::FlowStats> stats = monitor->GetFlowStats ();
     uint32_t total_rx = 0, total_tx = 0, num_flows = 0;
     double tput = 0, jain_numerator = 0, jain_denominator=0, min_tput = dr.GetBitRate(), max_tput = 0;
+    int n = 0; 
+
     for (std::map<FlowId, FlowMonitor::FlowStats>::const_iterator i = stats.begin (); i != stats.end (); ++i)
     {
         Ipv4FlowClassifier::FiveTuple t = classifier->FindFlow (i->first);
@@ -198,6 +200,9 @@ int main (int argc, char *argv[])
         total_rx += i->second.rxPackets;
         total_tx += i->second.txPackets;
         tput = i->second.rxBytes * 8 / ftime / 1000000.0;
+	if(tput <= 0)
+	  continue;
+	n++; 
         jain_numerator += tput;
         jain_denominator += tput * tput;
 
@@ -218,9 +223,9 @@ int main (int argc, char *argv[])
     }
     /* Compute Jain */
     double jain_idx;
-    jain_idx = (jain_numerator * jain_numerator) / ((nn - 1) * jain_denominator);
+    jain_idx = (jain_numerator * jain_numerator) / (n * jain_denominator);
     std::cout << "rlen jain eps " << std::endl;
-    std::cout << (nn - 1) << " " << jain_idx << " " <<  (min_tput/max_tput) << std::endl;
+    std::cout << n << " " << jain_idx << " " <<  (min_tput/max_tput) << std::endl;
 
     Simulator::Destroy ();
 

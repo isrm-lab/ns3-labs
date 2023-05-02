@@ -228,7 +228,7 @@
           std::cout << "  TxOffered:  " << i->second.txBytes * 8 / ftime / 1000000.0  << " Mbps\n";
           std::cout << "  Rx Packets: " << i->second.rxPackets << "\n";
           std::cout << "  Rx Bytes:   " << i->second.rxBytes << "\n";
-          std::cout << "  Throughput: " << i->second.rxBytes * 8 / ftime / 1000000.0  << " Mbps\n"; // 10 seconds (stop - start)
+          std::cout << "  Throughput: " << i->second.rxBytes * 8 / ftime / 1000000.0  << " Mb/s\n"; // 10 seconds (stop - start)
         }
     }
 
