@@ -44,7 +44,7 @@
  #include "ns3/mobility-model.h"
  #include "ns3/packet-sink.h"
  #include "ns3/packet-sink-helper.h"
- #include "ns3/tcp-westwood.h"
+ #include "ns3/tcp-westwood-plus.h"
  #include "ns3/internet-stack-helper.h"
  #include "ns3/ipv4-address-helper.h"
  #include "ns3/ipv4-global-routing-helper.h"
