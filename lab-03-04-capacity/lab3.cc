@@ -44,7 +44,7 @@
  #include "ns3/mobility-model.h"
  #include "ns3/packet-sink.h"
  #include "ns3/packet-sink-helper.h"
- #include "ns3/tcp-westwood.h"
+ #include "ns3/tcp-westwood-plus.h"
  #include "ns3/internet-stack-helper.h"
  #include "ns3/ipv4-address-helper.h"
  #include "ns3/ipv4-global-routing-helper.h"
@@ -57,32 +57,6 @@
  #define PI atan(1) * 4
 
  Ptr<PacketSink> sink;                         /* Pointer to the packet sink application */
- 
- 
-namespace ns3 {
-  inline std::istream& operator>> (std::istream& is, WifiStandard& standard)
-  {
-    std::string std;
-
-    if (!(is >> std))
-      return is;
-    
-    if (std == "802.11a") standard = WIFI_STANDARD_80211a;
-    else if (std == "802.11b") standard = WIFI_STANDARD_80211b;
-    else if (std == "802.11g") standard = WIFI_STANDARD_80211g;
-    else if (std == "802.11p") standard = WIFI_STANDARD_80211p;
-    else if (std == "802.11a-holland") standard = WIFI_STANDARD_holland;
-    else if (std == "802.11n-2.4GHz") standard = WIFI_STANDARD_80211n_2_4GHZ;
-    else if (std == "802.11n-5GHz") standard = WIFI_STANDARD_80211n_5GHZ;
-    else if (std == "802.11ac") standard = WIFI_STANDARD_80211ac;
-    else if (std == "802.11ax-2.4GHz") standard = WIFI_STANDARD_80211ax_2_4GHZ;
-    else if (std == "802.11ax-5GHz") standard = WIFI_STANDARD_80211ax_5GHZ;
-    /* probably not the best idea, but it should do */
-    else throw std::invalid_argument("no such standard");
-    
-    return is;
-  }
-}
 
  int
  main (int argc, char *argv[])
@@ -91,12 +65,11 @@ namespace ns3 {
     bool runTcp = false;                               /* Run TCP/UDP traffic */
     bool enableRtsCts = false;                         /* Enable RTS/CTS mechanism */
     uint32_t payloadSize = 1472;                       /* Transport layer payload size in bytes. */
-    std::string offeredRate = "11Mbps";                  /* Application layer offeredRate. */
+    std::string offeredRate = "54Mbps";                  /* Application layer offeredRate. */
     std::string tcpVariant = "TcpNewReno";             /* TCP variant type. */
     std::string phyRate = "DsssRate11Mbps";            /* Physical layer bitrate. */
     double simulationTime = 10;                        /* Simulation time in seconds. */
     bool pcapTracing = false;                          /* PCAP Tracing is enabled or not. */
-    WifiStandard standard = WIFI_STANDARD_80211b;      /* WiFi standard to use. */
 
     /* Command line argument parser setup. */
     CommandLine cmd;
@@ -108,7 +81,6 @@ namespace ns3 {
     cmd.AddValue ("phyRate", "Physical layer bitrate", phyRate);
     cmd.AddValue ("simulationTime", "Simulation time in seconds", simulationTime);
     cmd.AddValue ("tracing", "Enable/disable PCAP Tracing", pcapTracing);
-    cmd.AddValue ("standard", "WiFi standard to use", standard);
     cmd.Parse (argc, argv);
 
     if (numberOfNodes < 2) {
@@ -135,7 +107,7 @@ namespace ns3 {
 
     WifiMacHelper wifiMac;
     WifiHelper wifiHelper;
-    wifiHelper.SetStandard (standard);
+    wifiHelper.SetStandard (WIFI_STANDARD_80211g);
 
     /* Set up Legacy Channel */
     YansWifiChannelHelper wifiChannel;
