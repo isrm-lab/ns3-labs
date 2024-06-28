@@ -51,6 +51,19 @@ build_example(
 )
 
 build_example(
+  NAME lab10
+  SOURCE_FILES lab-10-multirate/lab10.cc
+  LIBRARIES_TO_LINK
+    ${libwifi}
+    ${libapplications}
+    ${libolsr}
+    ${libnetanim}
+	${libflow-monitor}
+	${libcsma}
+    ${libbridge}
+)
+
+build_example(
   NAME model-colocviu
   SOURCE_FILES model-colocviu/model-colocviu.cc
   LIBRARIES_TO_LINK
@@ -75,5 +88,3 @@ build_example(
 	${libcsma}
     ${libbridge}
 )
-
-
