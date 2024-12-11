@@ -143,7 +143,7 @@ int main (int argc, char *argv[])
     /* Set up Legacy Channel */
     YansWifiChannelHelper wifiChannel;
     wifiChannel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
-    wifiChannel.AddPropagationLoss ("ns3::FriisPropagationLossModel", "Frequency", DoubleValue (2e4));
+    wifiChannel.AddPropagationLoss ("ns3::FriisPropagationLossModel", "Frequency", DoubleValue (2.4e9));
     /* Setup Physical Layer */
     YansWifiPhyHelper wifiPhy;
     wifiPhy.SetErrorRateModel ("ns3::NistErrorRateModel");
