@@ -112,7 +112,7 @@
     /* Set up Legacy Channel */
     YansWifiChannelHelper wifiChannel;
     wifiChannel.SetPropagationDelay ("ns3::ConstantSpeedPropagationDelayModel");
-    wifiChannel.AddPropagationLoss ("ns3::FriisPropagationLossModel", "Frequency", DoubleValue (5e9));
+    wifiChannel.AddPropagationLoss ("ns3::FriisPropagationLossModel", "Frequency", DoubleValue (2.4e9));
     /* Setup Physical Layer */
     YansWifiPhyHelper wifiPhy;
     wifiPhy.SetErrorRateModel ("ns3::NistErrorRateModel");
@@ -224,7 +224,9 @@
           std::cout << "Flow " << i->first << " (" << t.sourceAddress << " -> " << t.destinationAddress << ")\n";
           std::cout << "  Tx Packets: " << i->second.txPackets << "\n";
           std::cout << "  Tx Bytes:   " << i->second.txBytes << "\n";
-          std::cout << "  TxOffered:  " << i->second.txBytes * 8 / ftime / 1000000.0  << " Mbps\n";
+          std::cout << "  Ftime:   " << i->second.timeLastRxPacket.GetSeconds()  << " " 
+                                     << i->second.timeFirstTxPacket.GetSeconds() << "\n";
+          std::cout << "  TxOffered:  " << i->second.txBytes * 8 / simulationTime / 1000000.0  << " Mbps\n";
           std::cout << "  Rx Packets: " << i->second.rxPackets << "\n";
           std::cout << "  Rx Bytes:   " << i->second.rxBytes << "\n";
           std::cout << "  Throughput: " << i->second.rxBytes * 8 / ftime / 1000000.0  << " Mb/s\n"; // 10 seconds (stop - start)

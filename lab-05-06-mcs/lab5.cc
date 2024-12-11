@@ -161,7 +161,7 @@ static void setup_flow_tcp(int src, int dest, NodeContainer nodes, int packetSiz
   sinkApp.Stop (Seconds (simTime));
 }
 
-void AdvancePosition (Ptr<Node> node, int stepsSize, int stepsTime)
+void AdvancePosition (Ptr<Node> node, int stepsSize, double stepsTime)
 {
     Ptr<MobilityModel> mobility = node->GetObject<MobilityModel> ();
     Vector pos = mobility->GetPosition ();
@@ -173,11 +173,11 @@ void AdvancePosition (Ptr<Node> node, int stepsSize, int stepsTime)
 
 Gnuplot2dDataset m_output;
 
-void CalculateThroughput (Ptr<Node> node)
+void CalculateThroughput (Ptr<Node> node, double stepsTime)
 {
   Time now = Simulator::Now (); /* Return the simulator's virtual time. */
-  double curBps = (sink->GetTotalRx () - lastTotalRx);
-  double curMbps = curBps * (double) 8 / 1e5;
+  double curBytes = (sink->GetTotalRx () - lastTotalRx);
+  double curMbps = curBytes * (double) 8 / stepsTime / 1e6;
   /* Convert Application RX Packets to MBits. */
 
   Ptr<MobilityModel> mobility = node->GetObject<MobilityModel> ();
@@ -187,8 +187,9 @@ void CalculateThroughput (Ptr<Node> node)
   std::cout << MacTxCount[0] << " " << MacRxCount[1] << " ";
   std::cout << PhyTxCount[0] << " " << PhyRxCount[1] << std::endl;
 
-  if (now.GetSeconds() > 5 && floor(now.GetSeconds()) == ceil(now.GetSeconds())) {
-      m_output.Add (pos.x, curBps);
+  //  if (now.GetSeconds() > 5 && floor(now.GetSeconds()) == ceil(now.GetSeconds())) {
+  if(1){
+      m_output.Add (pos.x, curBytes);
       memset(MacTxCount, 0, sizeof(MacTxCount));
       memset(MacRxCount, 0, sizeof(MacRxCount));
       memset(PhyTxCount, 0, sizeof(PhyTxCount));
@@ -197,7 +198,7 @@ void CalculateThroughput (Ptr<Node> node)
   lastTotalRx = sink->GetTotalRx ();
 
 
-  Simulator::Schedule (MilliSeconds (100), &CalculateThroughput, node);
+  Simulator::Schedule (Seconds(stepsTime), &CalculateThroughput, node, stepsTime);
 }
 
 int main (int argc, char *argv[])
@@ -207,7 +208,7 @@ int main (int argc, char *argv[])
     double simTime;
     int steps = 30;
     int stepsSize = 5;
-    int stepsTime = 1;
+    double stepsTime = 1.0;
     bool useRtsCts = false;
     bool pcapTracing = false;
     int tries = 7;
@@ -236,6 +237,8 @@ int main (int argc, char *argv[])
     cmd.AddValue("tries", "Max number of attempts to send frame (Short and Long Retry limit for station)", tries);
 
     cmd.Parse (argc, argv);
+
+    std::cout << "steps=" << steps << " stepSize=" << stepsSize << "m stepTime=" << stepsTime << "s\n";   
     
     ConfigStore config;
     config.ConfigureDefaults ();
@@ -251,7 +254,7 @@ int main (int argc, char *argv[])
     /* STA short retry count - relevant for RTS/CTS - max number of attempts for RTS packets */
     Config::SetDefault ("ns3::WifiRemoteStationManager::MaxSsrc", UintegerValue (tries));
 
-    simTime = steps * stepsTime;
+    simTime = (steps + 1) * stepsTime;
 
     NetDeviceContainer devicesList, devices1;
     YansWifiPhyHelper wifiPhy;
@@ -376,10 +379,10 @@ int main (int argc, char *argv[])
     Ptr<FlowMonitor> monitor = flowmon.InstallAll ();
 
     /* Move the STA by stepsSize meters every stepsTime seconds */
-    Simulator::Schedule (Seconds (0.5 + stepsTime), 
+    Simulator::Schedule (Seconds (stepsTime), 
             &AdvancePosition, 
             nodes.Get (1), stepsSize, stepsTime);
-    Simulator::Schedule (Seconds (1.1), &CalculateThroughput, nodes.Get (1));
+    Simulator::Schedule (Seconds (stepsTime), &CalculateThroughput, nodes.Get (1), stepsTime);
 
     if (pcapTracing)
     {
